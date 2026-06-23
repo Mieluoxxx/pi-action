@@ -30821,19 +30821,22 @@ function summarizeEvents(events) {
             if (delta)
                 deltaFallback += delta;
         }
+        else if (type === 'tool_execution_start') {
+            const toolName = typeof evt.toolName === 'string' ? evt.toolName : '';
+            if (toolName === 'edit' || toolName === 'write') {
+                const fp = filePathFromArgs(evt.args);
+                core.info(`[pi-write] toolName=${toolName} file=${fp ?? '(unknown)'} args=${JSON.stringify(evt.args ?? {}).slice(0, 200)}`);
+                if (fp && !written.includes(fp))
+                    written.push(fp);
+            }
+        }
         else if (type === 'tool_execution_end') {
             toolCalls += 1;
             const toolName = typeof evt.toolName === 'string' ? evt.toolName : '';
-            const errFlag = evt.isError === true ? 'ERROR' : 'ok';
-            const r = evt.result;
-            core.info(`[pi-tool:${errFlag}] toolName=${toolName || '(unknown)'} args=${JSON.stringify(evt.args ?? {}).slice(0, 300)}${evt.isError === true ? ` result=${JSON.stringify(r ?? '').slice(0, 500)}` : ''}`);
             if (evt.isError === true) {
+                const r = evt.result;
+                core.info(`[pi-tool-error] toolName=${toolName || '(unknown)'} result=${JSON.stringify(r ?? '').slice(0, 500)}`);
                 errorMessage = isBag(r) && typeof r.message === 'string' ? r.message : 'tool error';
-            }
-            if (toolName === 'edit' || toolName === 'write') {
-                const fp = filePathFromArgs(evt.args);
-                if (fp && !written.includes(fp))
-                    written.push(fp);
             }
         }
         else if (type === 'auto_retry_end') {
