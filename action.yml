@@ -10,11 +10,23 @@ inputs:
     description: 'Version of @earendil-works/pi-coding-agent to install. Use "latest" or a semver range.'
     default: 'latest'
   provider:
-    description: 'LLM provider (anthropic, openai, google, ...).'
+    description: 'LLM provider. Ignored when base_url is set (forces "custom").'
     default: 'anthropic'
   model:
-    description: 'Model pattern or id, e.g. "sonnet:high" or "openai/gpt-4o". Empty = provider default.'
+    description: 'Model id. Required when base_url is set; otherwise e.g. "sonnet:high".'
     default: ''
+  base_url:
+    description: 'Custom Anthropic-messages-compatible endpoint. When set, pi-action writes ~/.pi/agent/models.json registering a "custom" provider here.'
+    default: ''
+  api:
+    description: 'Protocol for custom endpoint: anthropic-messages (default), openai-completions, openai-responses, google-generative-ai.'
+    default: 'anthropic-messages'
+  context_window:
+    description: 'Custom model context window in tokens.'
+    default: '200000'
+  max_tokens:
+    description: 'Custom model max output tokens.'
+    default: '16384'
   api_key:
     description: 'API key for the provider. Passed to pi via --api-key.'
     required: true

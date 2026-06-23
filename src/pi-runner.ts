@@ -138,13 +138,15 @@ export function buildPiArgs(opts: RunPiOptions): string[] {
     '-a',
     '--provider',
     c.provider,
-    '--api-key',
-    c.apiKey,
     '--thinking',
     c.thinking,
     '--tools',
     toolsFor(c).join(','),
   ];
+  // custom provider reads key from models.json + env; built-in providers take --api-key
+  if (c.provider !== 'custom' && c.apiKey) {
+    args.push('--api-key', c.apiKey);
+  }
   if (c.model) args.push('--model', c.model);
   if (c.systemPrompt) args.push('--system-prompt', c.systemPrompt);
   if (c.appendSystemPrompt) args.push('--append-system-prompt', c.appendSystemPrompt);

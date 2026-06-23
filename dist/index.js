@@ -29978,11 +29978,20 @@ function splitList(value) {
         .filter(Boolean);
 }
 function loadConfig() {
+    const baseUrl = core.getInput('base_url');
+    const model = core.getInput('model');
+    if (baseUrl && !model) {
+        throw new Error('`model` input is required when `base_url` is set.');
+    }
     return {
         piVersion: core.getInput('pi_version') || 'latest',
-        provider: core.getInput('provider') || 'anthropic',
-        model: core.getInput('model'),
+        provider: baseUrl ? 'custom' : core.getInput('provider') || 'anthropic',
+        model,
         apiKey: core.getInput('api_key'),
+        baseUrl,
+        api: core.getInput('api') || 'anthropic-messages',
+        contextWindow: Number.parseInt(core.getInput('context_window') || '200000', 10),
+        maxTokens: Number.parseInt(core.getInput('max_tokens') || '16384', 10),
         triggerPhrase: core.getInput('trigger_phrase') || '@pi',
         directPrompt: core.getInput('direct_prompt'),
         writeMode: core.getBooleanInput('write_mode'),
@@ -30347,6 +30356,7 @@ const decisions_1 = __nccwpck_require__(9816);
 const events_1 = __nccwpck_require__(5694);
 const github_1 = __nccwpck_require__(9248);
 const install_1 = __nccwpck_require__(232);
+const models_config_1 = __nccwpck_require__(9056);
 const pi_runner_1 = __nccwpck_require__(1379);
 const prompt_1 = __nccwpck_require__(705);
 const RESPONSE_LIMIT = 60_000;
@@ -30361,6 +30371,19 @@ async function main() {
     if (!config.apiKey)
         throw new Error('`api_key` input is required.');
     await (0, install_1.ensurePiInstalled)(config.piVersion, config.installArgs);
+    if (config.baseUrl) {
+        const file = (0, models_config_1.writeModelsJson)((0, models_config_1.buildModelsJson)({
+            baseUrl: config.baseUrl,
+            api: config.api,
+            modelId: config.model,
+            apiKeyEnv: 'PI_API_KEY',
+            contextWindow: config.contextWindow,
+            maxTokens: config.maxTokens,
+        }));
+        core.info(`Wrote custom provider config to ${file}`);
+        core.setSecret(config.apiKey);
+        process.env.PI_API_KEY = config.apiKey;
+    }
     const ctx = github.context;
     const event = (0, events_1.classifyEvent)(ctx.eventName, ctx.payload);
     (0, events_1.logEvent)(event);
@@ -30551,6 +30574,89 @@ async function ensurePiInstalled(version, installArgs) {
 
 /***/ }),
 
+/***/ 9056:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.buildModelsJson = buildModelsJson;
+exports.writeModelsJson = writeModelsJson;
+const fs = __importStar(__nccwpck_require__(3024));
+const os = __importStar(__nccwpck_require__(8161));
+const path = __importStar(__nccwpck_require__(6760));
+/**
+ * Build the JSON for ~/.pi/agent/models.json registering a custom Anthropic-messages
+ * compatible provider. Pure function (for tests).
+ */
+function buildModelsJson(c) {
+    const providerName = c.providerName ?? 'custom';
+    const config = {
+        providers: {
+            [providerName]: {
+                baseUrl: c.baseUrl,
+                api: c.api,
+                apiKey: `$${c.apiKeyEnv}`,
+                models: [
+                    {
+                        id: c.modelId,
+                        name: c.modelId,
+                        reasoning: false,
+                        input: ['text'],
+                        contextWindow: c.contextWindow,
+                        maxTokens: c.maxTokens,
+                    },
+                ],
+            },
+        },
+    };
+    return JSON.stringify(config, null, 2);
+}
+/** Write models.json to ~/.pi/agent/. Returns the written file path. */
+function writeModelsJson(content) {
+    const dir = path.join(os.homedir(), '.pi', 'agent');
+    fs.mkdirSync(dir, { recursive: true });
+    const file = path.join(dir, 'models.json');
+    fs.writeFileSync(file, content, 'utf8');
+    return file;
+}
+
+
+/***/ }),
+
 /***/ 1379:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -30719,13 +30825,15 @@ function buildPiArgs(opts) {
         '-a',
         '--provider',
         c.provider,
-        '--api-key',
-        c.apiKey,
         '--thinking',
         c.thinking,
         '--tools',
         (0, config_1.toolsFor)(c).join(','),
     ];
+    // custom provider reads key from models.json + env; built-in providers take --api-key
+    if (c.provider !== 'custom' && c.apiKey) {
+        args.push('--api-key', c.apiKey);
+    }
     if (c.model)
         args.push('--model', c.model);
     if (c.systemPrompt)
@@ -30855,6 +30963,7 @@ function buildPrompt(input) {
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.parseTrigger = parseTrigger;
+exports.containsTrigger = containsTrigger;
 /**
  * Detect whether a comment invokes the agent. Triggered when the phrase appears
  * anywhere in the body. The returned prompt is the text *after* the first
@@ -30867,6 +30976,12 @@ function parseTrigger(commentBody, phrase) {
     }
     const after = commentBody.slice(idx + phrase.length).trim();
     return { triggered: true, prompt: after };
+}
+/**
+ * Boolean form of {@link parseTrigger} for callers that only need the yes/no.
+ */
+function containsTrigger(commentBody, phrase) {
+    return parseTrigger(commentBody, phrase).triggered;
 }
 
 
@@ -30989,6 +31104,30 @@ module.exports = require("node:crypto");
 
 "use strict";
 module.exports = require("node:events");
+
+/***/ }),
+
+/***/ 3024:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("node:fs");
+
+/***/ }),
+
+/***/ 8161:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("node:os");
+
+/***/ }),
+
+/***/ 6760:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("node:path");
 
 /***/ }),
 

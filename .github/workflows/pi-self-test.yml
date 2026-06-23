@@ -3,6 +3,12 @@ name: PI Self-Test
 # Dogfooding: pi-action reviews its own repo.
 # Runs only here (Mieluoxxx/pi-action) and only on test/* branches
 # to avoid spending API budget on every PR.
+#
+# Requires repo secrets:
+#   PI_BASE_URL  — your Anthropic-messages-compatible endpoint
+#   PI_API_KEY   — key for that endpoint
+# And a repo variable:
+#   PI_MODEL     — model id understood by your endpoint
 
 on:
   pull_request:
@@ -23,7 +29,10 @@ jobs:
       - name: Pi reviews the PR
         uses: ./
         with:
-          api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          base_url: ${{ secrets.PI_BASE_URL }}
+          api: anthropic-messages
+          model: ${{ vars.PI_MODEL }}
+          api_key: ${{ secrets.PI_API_KEY }}
           direct_prompt: |
             这是 pi-action 仓库的自测 PR。请用中文,先给结论:
             1) 一句话总结这个 PR 改了什么。
@@ -47,7 +56,10 @@ jobs:
       - name: Pi answers @pi
         uses: ./
         with:
-          api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          base_url: ${{ secrets.PI_BASE_URL }}
+          api: anthropic-messages
+          model: ${{ vars.PI_MODEL }}
+          api_key: ${{ secrets.PI_API_KEY }}
           trigger_phrase: '@pi'
           thinking: low
         env:

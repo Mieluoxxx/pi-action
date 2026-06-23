@@ -5,6 +5,7 @@ import { decideTrigger } from './decisions';
 import { classifyEvent, logEvent } from './events';
 import { type RepoInfo, buildCommentBody, commitAndPush } from './github';
 import { ensurePiInstalled } from './install';
+import { buildModelsJson, writeModelsJson } from './models-config';
 import { runPi } from './pi-runner';
 import { type TargetContext, buildPrompt } from './prompt';
 
@@ -21,6 +22,21 @@ async function main(): Promise<void> {
   if (!config.apiKey) throw new Error('`api_key` input is required.');
 
   await ensurePiInstalled(config.piVersion, config.installArgs);
+  if (config.baseUrl) {
+    const file = writeModelsJson(
+      buildModelsJson({
+        baseUrl: config.baseUrl,
+        api: config.api,
+        modelId: config.model,
+        apiKeyEnv: 'PI_API_KEY',
+        contextWindow: config.contextWindow,
+        maxTokens: config.maxTokens,
+      }),
+    );
+    core.info(`Wrote custom provider config to ${file}`);
+    core.setSecret(config.apiKey);
+    process.env.PI_API_KEY = config.apiKey;
+  }
 
   const ctx = github.context;
   const event = classifyEvent(ctx.eventName, ctx.payload);

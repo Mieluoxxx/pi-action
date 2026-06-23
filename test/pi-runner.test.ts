@@ -9,6 +9,10 @@ function makeConfig(overrides: Partial<Config> = {}): Config {
     provider: 'anthropic',
     model: '',
     apiKey: 'sk-test',
+    baseUrl: '',
+    api: 'anthropic-messages',
+    contextWindow: 200000,
+    maxTokens: 16384,
     triggerPhrase: '@pi',
     directPrompt: '',
     writeMode: false,
@@ -138,4 +142,15 @@ test('buildPiArgs adds model and system prompt when provided', () => {
   assert.ok(args.includes('sonnet:high'));
   assert.ok(args.includes('--system-prompt'));
   assert.ok(args.includes('Be brief.'));
+});
+
+test('buildPiArgs omits --api-key for custom provider', () => {
+  const args = buildPiArgs({
+    prompt: 'hi',
+    config: makeConfig({ provider: 'custom', model: 'my-model' }),
+    cwd: '/x',
+  });
+  assert.ok(!args.includes('--api-key'));
+  assert.equal(args[args.indexOf('--provider') + 1], 'custom');
+  assert.equal(args[args.indexOf('--model') + 1], 'my-model');
 });
