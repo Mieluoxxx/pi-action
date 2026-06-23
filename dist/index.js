@@ -29961,9 +29961,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.WRITE_TOOLS = exports.READ_ONLY_TOOLS = void 0;
 exports.loadConfig = loadConfig;
-exports.toolsFor = toolsFor;
 const core = __importStar(__nccwpck_require__(7484));
 function splitArgs(value) {
     return value
@@ -30001,13 +29999,6 @@ function loadConfig() {
         installArgs: splitArgs(core.getInput('install_args')),
         timeoutSeconds: Number.parseInt(core.getInput('timeout') || '600', 10),
     };
-}
-/** Tool allowlist enforced regardless of write_mode. */
-exports.READ_ONLY_TOOLS = ['read', 'grep', 'find', 'ls'];
-exports.WRITE_TOOLS = ['read', 'grep', 'find', 'ls', 'edit', 'write', 'bash'];
-function toolsFor(config) {
-    const base = config.writeMode ? [...exports.WRITE_TOOLS] : [...exports.READ_ONLY_TOOLS];
-    return base.filter((t) => !config.excludeTools.includes(t));
 }
 
 
@@ -30696,7 +30687,6 @@ exports.buildPiArgs = buildPiArgs;
 exports.runPi = runPi;
 const core = __importStar(__nccwpck_require__(7484));
 const node_child_process_1 = __nccwpck_require__(1421);
-const config_1 = __nccwpck_require__(2973);
 function isBag(v) {
     return typeof v === 'object' && v !== null;
 }
@@ -30821,8 +30811,6 @@ function buildPiArgs(opts) {
         c.provider,
         '--thinking',
         c.thinking,
-        '--tools',
-        (0, config_1.toolsFor)(c).join(','),
     ];
     // custom provider reads key from models.json + env; built-in providers take --api-key
     if (c.provider !== 'custom' && c.apiKey) {
@@ -30834,6 +30822,8 @@ function buildPiArgs(opts) {
         args.push('--system-prompt', c.systemPrompt);
     if (c.appendSystemPrompt)
         args.push('--append-system-prompt', c.appendSystemPrompt);
+    if (c.excludeTools.length > 0)
+        args.push('--exclude-tools', c.excludeTools.join(','));
     args.push(...c.extraArgs);
     return args;
 }
@@ -30995,6 +30985,7 @@ function buildPrompt(input) {
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.parseTrigger = parseTrigger;
+exports.containsTrigger = containsTrigger;
 /**
  * Detect whether a comment invokes the agent. Triggered when the phrase appears
  * anywhere in the body. The returned prompt is the text *after* the first
@@ -31007,6 +30998,12 @@ function parseTrigger(commentBody, phrase) {
     }
     const after = commentBody.slice(idx + phrase.length).trim();
     return { triggered: true, prompt: after };
+}
+/**
+ * Boolean form of {@link parseTrigger} for callers that only need the yes/no.
+ */
+function containsTrigger(commentBody, phrase) {
+    return parseTrigger(commentBody, phrase).triggered;
 }
 
 
