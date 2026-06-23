@@ -29999,6 +29999,8 @@ function loadConfig() {
         installArgs: splitArgs(core.getInput('install_args')),
         timeoutSeconds: Number.parseInt(core.getInput('timeout') || '600', 10),
         allowedUsers: splitList(core.getInput('allowed_users')),
+        botId: core.getInput('bot_id'),
+        botName: core.getInput('bot_name') || 'pi-action[bot]',
     };
 }
 
@@ -30334,7 +30336,10 @@ async function commitAndPush(opts) {
         core.info('No changes to commit.');
         return { pushed: false, commitSha: '' };
     }
-    await exec.exec('git', ['commit', '-m', opts.message, '--author', 'pi-action <actions@github.com>'], { cwd: opts.cwd });
+    const author = opts.botId
+        ? `${opts.botName} <${opts.botId}+${opts.botName}@users.noreply.github.com>`
+        : `${opts.botName} <actions@github.com>`;
+    await exec.exec('git', ['commit', '-m', opts.message, '--author', author], { cwd: opts.cwd });
     await exec.exec('git', ['push', 'origin', `HEAD:${opts.branch}`], {
         cwd: opts.cwd,
         silent: true,
@@ -30521,6 +30526,8 @@ async function main() {
             branch,
             message: `pi-action: ${decision.task.slice(0, 72) || 'changes'}`,
             cwd: process.cwd(),
+            botId: config.botId,
+            botName: config.botName,
         });
         pushed = pushResult.pushed;
     }

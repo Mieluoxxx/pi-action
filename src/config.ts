@@ -18,6 +18,8 @@ export interface Config {
   installArgs: string[];
   timeoutSeconds: number;
   allowedUsers: string[];
+  botId: string;
+  botName: string;
 }
 
 function splitArgs(value: string): string[] {
@@ -58,5 +60,7 @@ export function loadConfig(): Config {
     installArgs: splitArgs(core.getInput('install_args')),
     timeoutSeconds: Number.parseInt(core.getInput('timeout') || '600', 10),
     allowedUsers: splitList(core.getInput('allowed_users')),
+    botId: core.getInput('bot_id'),
+    botName: core.getInput('bot_name') || 'pi-action[bot]',
   };
 }

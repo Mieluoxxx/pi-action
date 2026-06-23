@@ -24,6 +24,11 @@ jobs:
       contents: read
       pull-requests: write
     steps:
+      - id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.PI_APP_ID }}
+          private-key: ${{ secrets.PI_APP_PRIVATE_KEY }}
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -42,9 +47,10 @@ jobs:
                当 phrase 是空字符串时,它的行为是什么?这是不是一个 bug?
                引用具体代码行说明。
             3) 列出你发现的任何其它问题;没有就写"无明显问题"。
+          bot_id: ${{ secrets.PI_APP_ID }}
           thinking: low
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
 
   pi-ask:
     if: github.event_name == 'issue_comment' && contains(github.event.comment.body, '@pi') && github.repository == 'Mieluoxxx/pi-action'
@@ -54,6 +60,11 @@ jobs:
       pull-requests: write
       issues: write
     steps:
+      - id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.PI_APP_ID }}
+          private-key: ${{ secrets.PI_APP_PRIVATE_KEY }}
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
@@ -66,6 +77,7 @@ jobs:
           api_key: ${{ secrets.PI_API_KEY }}
           trigger_phrase: '@pi'
           write_mode: 'true'
+          bot_id: ${{ secrets.PI_APP_ID }}
           thinking: low
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
