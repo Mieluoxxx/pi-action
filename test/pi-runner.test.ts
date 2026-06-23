@@ -21,6 +21,7 @@ function makeConfig(overrides: Partial<Config> = {}): Config {
     extraArgs: [],
     installArgs: [],
     timeoutSeconds: 600,
+    allowedUsers: [],
     ...overrides,
   };
 }

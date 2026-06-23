@@ -22,6 +22,7 @@ function makeConfig(overrides: Partial<Config> = {}): Config {
     extraArgs: [],
     installArgs: [],
     timeoutSeconds: 600,
+    allowedUsers: [],
     ...overrides,
   };
 }
@@ -46,7 +47,7 @@ const ISSUE_OPENED: EventKind = {
   login: 'carol',
 };
 
-function comment(body: string, login: string, isPr: boolean): EventKind {
+function comment(body: string, login: string, isPr: boolean, assoc = 'OWNER'): EventKind {
   return {
     kind: 'issue_comment',
     action: 'created',
@@ -54,6 +55,7 @@ function comment(body: string, login: string, isPr: boolean): EventKind {
     commentBody: body,
     commentId: 9,
     login,
+    authorAssociation: assoc,
     isPr,
   };
 }
@@ -115,4 +117,23 @@ test('decideTrigger uses directPrompt as fallback for empty @pi', () => {
 test('decideTrigger ignores comment without phrase', () => {
   const d = decideTrigger(comment('just chatting', 'bob', false), makeConfig(), 'bob');
   assert.equal(d.run, false);
+});
+
+test('decideTrigger denies @pi from non-write user (NONE) by default', () => {
+  const d = decideTrigger(comment('@pi hi', 'stranger', false, 'NONE'), makeConfig(), 'stranger');
+  assert.equal(d.run, false);
+});
+
+test('decideTrigger allows @pi from OWNER', () => {
+  const d = decideTrigger(comment('@pi hi', 'alice', false, 'OWNER'), makeConfig(), 'alice');
+  assert.equal(d.run, true);
+});
+
+test('decideTrigger allows allow-listed user without write permission', () => {
+  const d = decideTrigger(
+    comment('@pi hi', 'contrib', false, 'NONE'),
+    makeConfig({ allowedUsers: ['contrib'] }),
+    'contrib',
+  );
+  assert.equal(d.run, true);
 });

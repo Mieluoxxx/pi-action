@@ -29998,6 +29998,7 @@ function loadConfig() {
         extraArgs: splitArgs(core.getInput('extra_args')),
         installArgs: splitArgs(core.getInput('install_args')),
         timeoutSeconds: Number.parseInt(core.getInput('timeout') || '600', 10),
+        allowedUsers: splitList(core.getInput('allowed_users')),
     };
 }
 
@@ -30005,22 +30006,67 @@ function loadConfig() {
 /***/ }),
 
 /***/ 9816:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.decideTrigger = decideTrigger;
+const core = __importStar(__nccwpck_require__(7484));
 const events_1 = __nccwpck_require__(5694);
 const trigger_1 = __nccwpck_require__(2523);
 const FALLBACK_TASK = 'Investigate and respond to this item.';
 const SKIP = { run: false, task: '', triggeredBy: '' };
+const WRITE_ASSOCIATIONS = {
+    OWNER: true,
+    MEMBER: true,
+    COLLABORATOR: true,
+};
 /** Pure decision: should pi run, and with what task. Exported for tests. */
 function decideTrigger(event, config, actor) {
     const self = actor === 'pi-action' || actor.endsWith('[bot]');
     if (self)
         return SKIP;
     if (event.kind === 'issue_comment') {
+        const hasWrite = WRITE_ASSOCIATIONS[event.authorAssociation] === true;
+        const allowed = config.allowedUsers.includes(event.login);
+        if (!hasWrite && !allowed) {
+            core.info(`@pi by @${event.login} (${event.authorAssociation || 'NONE'}) denied — needs write permission or allow-list`);
+            return SKIP;
+        }
         const t = (0, trigger_1.parseTrigger)(event.commentBody, config.triggerPhrase);
         if (!t.triggered)
             return SKIP;
@@ -30136,6 +30182,7 @@ function classifyEvent(eventName, payload) {
             commentBody: str(comment.body),
             commentId: num(comment.id),
             login: str(field(comment, 'user')?.login),
+            authorAssociation: str(comment.author_association),
             isPr: Boolean('pull_request' in issue && issue.pull_request),
         };
     }

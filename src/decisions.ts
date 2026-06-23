@@ -1,3 +1,4 @@
+import * as core from '@actions/core';
 import type { Config } from './config';
 import { type EventKind, shouldHandle } from './events';
 import { parseTrigger } from './trigger';
@@ -11,6 +12,11 @@ export interface TriggerDecision {
 }
 
 const SKIP: TriggerDecision = { run: false, task: '', triggeredBy: '' };
+const WRITE_ASSOCIATIONS: Record<string, true> = {
+  OWNER: true,
+  MEMBER: true,
+  COLLABORATOR: true,
+};
 
 /** Pure decision: should pi run, and with what task. Exported for tests. */
 export function decideTrigger(event: EventKind, config: Config, actor: string): TriggerDecision {
@@ -18,6 +24,14 @@ export function decideTrigger(event: EventKind, config: Config, actor: string): 
   if (self) return SKIP;
 
   if (event.kind === 'issue_comment') {
+    const hasWrite = WRITE_ASSOCIATIONS[event.authorAssociation] === true;
+    const allowed = config.allowedUsers.includes(event.login);
+    if (!hasWrite && !allowed) {
+      core.info(
+        `@pi by @${event.login} (${event.authorAssociation || 'NONE'}) denied — needs write permission or allow-list`,
+      );
+      return SKIP;
+    }
     const t = parseTrigger(event.commentBody, config.triggerPhrase);
     if (!t.triggered) return SKIP;
     return {
