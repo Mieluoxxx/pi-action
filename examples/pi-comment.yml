@@ -1,0 +1,32 @@
+# Example: @pi comment trigger with write access (agent can edit + push)
+name: Pi Agent
+on:
+  issue_comment:
+    types: [created]
+  issues:
+    types: [opened]
+
+jobs:
+  pi:
+    # Only run on comments that mention @pi, or on new issues.
+    if: >
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@pi'))
+      || github.event_name == 'issues'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run Pi
+        uses: your-org/pi-action@v1
+        with:
+          api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          trigger_phrase: '@pi'
+          write_mode: 'true'
+          thinking: high
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,57 @@
+name: 'Pi Coding Agent'
+description: 'Run the Pi coding agent (earendil-works/pi) on GitHub issues and pull requests. Triggered by @pi comments or direct events.'
+author: 'pi-action'
+branding:
+  icon: 'cpu'
+  color: 'purple'
+
+inputs:
+  pi_version:
+    description: 'Version of @earendil-works/pi-coding-agent to install. Use "latest" or a semver range.'
+    default: 'latest'
+  provider:
+    description: 'LLM provider (anthropic, openai, google, ...).'
+    default: 'anthropic'
+  model:
+    description: 'Model pattern or id, e.g. "sonnet:high" or "openai/gpt-4o". Empty = provider default.'
+    default: ''
+  api_key:
+    description: 'API key for the provider. Passed to pi via --api-key.'
+    required: true
+  trigger_phrase:
+    description: 'Phrase that triggers the agent in issue/PR comments.'
+    default: '@pi'
+  direct_prompt:
+    description: 'Prompt used when the agent runs on a direct event (e.g. PR opened). Empty disables direct triggering.'
+    default: ''
+  write_mode:
+    description: 'When true, grants pi write/edit/bash tools (can modify files and push). Default is read-only.'
+    default: 'false'
+  thinking:
+    description: 'Reasoning effort: off, minimal, low, medium, high, xhigh.'
+    default: 'medium'
+  system_prompt:
+    description: 'Replace the default system prompt (context files are still appended).'
+    default: ''
+  append_system_prompt:
+    description: 'Extra text appended to the system prompt.'
+    default: ''
+  exclude_tools:
+    description: 'Comma-separated extra tool names to disable (added on top of write_mode policy).'
+    default: ''
+  extra_args:
+    description: 'Additional raw arguments passed to `pi`.'
+    default: ''
+  install_args:
+    description: 'Extra npm flags when installing pi (e.g. "--registry=...").'
+    default: ''
+
+outputs:
+  triggered:
+    description: '"true" if the agent ran, "false" otherwise.'
+  response:
+    description: 'Final assistant text emitted by pi (truncated to ~60k chars).'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
