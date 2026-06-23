@@ -89,6 +89,11 @@ export async function commitAndPush(opts: CommitOptions): Promise<CommitResult> 
     return { pushed: false, commitSha: '' };
   }
 
+  const committerEmail = opts.botId
+    ? `${opts.botId}+${opts.botName}@users.noreply.github.com`
+    : 'actions@github.com';
+  await exec.exec('git', ['config', 'user.name', opts.botName], { cwd: opts.cwd, silent: true });
+  await exec.exec('git', ['config', 'user.email', committerEmail], { cwd: opts.cwd, silent: true });
   const author = opts.botId
     ? `${opts.botName} <${opts.botId}+${opts.botName}@users.noreply.github.com>`
     : `${opts.botName} <actions@github.com>`;
