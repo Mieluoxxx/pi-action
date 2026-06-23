@@ -1,4 +1,4 @@
-# Example: @pi comment trigger with write access (agent can edit + push)
+# Example: @pi-agent comment trigger with write access (agent can edit + push)
 name: Pi Agent
 on:
   issue_comment:
@@ -8,9 +8,9 @@ on:
 
 jobs:
   pi:
-    # Only run on comments that mention @pi, or on new issues.
+    # Only run on comments that mention @pi-agent, or on new issues.
     if: >
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@pi'))
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@pi-agent'))
       || github.event_name == 'issues'
     runs-on: ubuntu-latest
     permissions:
@@ -25,7 +25,7 @@ jobs:
         uses: Mieluoxxx/pi-action@v1
         with:
           api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          trigger_phrase: '@pi'
+          trigger_phrase: '@pi-agent'
           write_mode: 'true'
           thinking: high
         env:
