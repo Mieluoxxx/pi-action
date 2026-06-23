@@ -58,12 +58,3 @@ export function loadConfig(): Config {
     timeoutSeconds: Number.parseInt(core.getInput('timeout') || '600', 10),
   };
 }
-
-/** Tool allowlist enforced regardless of write_mode. */
-export const READ_ONLY_TOOLS = ['read', 'grep', 'find', 'ls'] as const;
-export const WRITE_TOOLS = ['read', 'grep', 'find', 'ls', 'edit', 'write', 'bash'] as const;
-
-export function toolsFor(config: Config): string[] {
-  const base = config.writeMode ? [...WRITE_TOOLS] : [...READ_ONLY_TOOLS];
-  return base.filter((t) => !config.excludeTools.includes(t));
-}

@@ -1,6 +1,6 @@
 import * as core from '@actions/core';
 import { spawn } from 'node:child_process';
-import { type Config, toolsFor } from './config';
+import { type Config } from './config';
 
 export interface PiResult {
   ok: boolean;
@@ -142,8 +142,6 @@ export function buildPiArgs(opts: RunPiOptions): string[] {
     c.provider,
     '--thinking',
     c.thinking,
-    '--tools',
-    toolsFor(c).join(','),
   ];
   // custom provider reads key from models.json + env; built-in providers take --api-key
   if (c.provider !== 'custom' && c.apiKey) {
@@ -152,6 +150,7 @@ export function buildPiArgs(opts: RunPiOptions): string[] {
   if (c.model) args.push('--model', c.model);
   if (c.systemPrompt) args.push('--system-prompt', c.systemPrompt);
   if (c.appendSystemPrompt) args.push('--append-system-prompt', c.appendSystemPrompt);
+  if (c.excludeTools.length > 0) args.push('--exclude-tools', c.excludeTools.join(','));
   args.push(...c.extraArgs);
   return args;
 }

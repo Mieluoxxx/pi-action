@@ -115,20 +115,7 @@ test('buildPiArgs read-only tools when writeMode false', () => {
   assert.ok(args.includes('--mode'));
   assert.ok(args.includes('json'));
   assert.ok(args.includes('--no-session'));
-  const idx = args.indexOf('--tools');
-  assert.notEqual(idx, -1);
-  assert.equal(args[idx + 1], 'read,grep,find,ls');
-});
-
-test('buildPiArgs write tools when writeMode true', () => {
-  const args = buildPiArgs({
-    prompt: 'hi',
-    config: makeConfig({ writeMode: true }),
-    cwd: '/x',
-    timeoutMs: 600000,
-  });
-  const idx = args.indexOf('--tools');
-  assert.equal(args[idx + 1], 'read,grep,find,ls,edit,write,bash');
+  assert.ok(!args.includes('--tools'));
 });
 
 test('buildPiArgs respects excludeTools', () => {
@@ -138,8 +125,8 @@ test('buildPiArgs respects excludeTools', () => {
     cwd: '/x',
     timeoutMs: 600000,
   });
-  const idx = args.indexOf('--tools');
-  assert.equal(args[idx + 1], 'read,find');
+  const idx = args.indexOf('--exclude-tools');
+  assert.equal(args[idx + 1], 'grep,ls');
 });
 
 test('buildPiArgs adds model and system prompt when provided', () => {
