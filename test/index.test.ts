@@ -21,6 +21,7 @@ function makeConfig(overrides: Partial<Config> = {}): Config {
     excludeTools: [],
     extraArgs: [],
     installArgs: [],
+    timeoutSeconds: 600,
     ...overrides,
   };
 }

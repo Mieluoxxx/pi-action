@@ -20,6 +20,7 @@ function makeConfig(overrides: Partial<Config> = {}): Config {
     excludeTools: [],
     extraArgs: [],
     installArgs: [],
+    timeoutSeconds: 600,
     ...overrides,
   };
 }
@@ -103,7 +104,12 @@ test('summarizeEvents ignores non-assistant messages', () => {
 });
 
 test('buildPiArgs read-only tools when writeMode false', () => {
-  const args = buildPiArgs({ prompt: 'hi', config: makeConfig({ writeMode: false }), cwd: '/x' });
+  const args = buildPiArgs({
+    prompt: 'hi',
+    config: makeConfig({ writeMode: false }),
+    cwd: '/x',
+    timeoutMs: 600000,
+  });
   assert.ok(args.includes('-p'));
   assert.ok(args.includes('hi'));
   assert.ok(args.includes('--mode'));
@@ -115,7 +121,12 @@ test('buildPiArgs read-only tools when writeMode false', () => {
 });
 
 test('buildPiArgs write tools when writeMode true', () => {
-  const args = buildPiArgs({ prompt: 'hi', config: makeConfig({ writeMode: true }), cwd: '/x' });
+  const args = buildPiArgs({
+    prompt: 'hi',
+    config: makeConfig({ writeMode: true }),
+    cwd: '/x',
+    timeoutMs: 600000,
+  });
   const idx = args.indexOf('--tools');
   assert.equal(args[idx + 1], 'read,grep,find,ls,edit,write,bash');
 });
@@ -125,6 +136,7 @@ test('buildPiArgs respects excludeTools', () => {
     prompt: 'hi',
     config: makeConfig({ writeMode: false, excludeTools: ['grep', 'ls'] }),
     cwd: '/x',
+    timeoutMs: 600000,
   });
   const idx = args.indexOf('--tools');
   assert.equal(args[idx + 1], 'read,find');
@@ -135,6 +147,7 @@ test('buildPiArgs adds model and system prompt when provided', () => {
     prompt: 'hi',
     config: makeConfig({ model: 'sonnet:high', systemPrompt: 'Be brief.' }),
     cwd: '/x',
+    timeoutMs: 600000,
   });
   assert.ok(args.includes('--model'));
   assert.ok(args.includes('sonnet:high'));
@@ -147,6 +160,7 @@ test('buildPiArgs omits --api-key for custom provider', () => {
     prompt: 'hi',
     config: makeConfig({ provider: 'custom', model: 'my-model' }),
     cwd: '/x',
+    timeoutMs: 600000,
   });
   assert.ok(!args.includes('--api-key'));
   assert.equal(args[args.indexOf('--provider') + 1], 'custom');

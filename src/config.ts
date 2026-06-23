@@ -16,6 +16,7 @@ export interface Config {
   excludeTools: string[];
   extraArgs: string[];
   installArgs: string[];
+  timeoutSeconds: number;
 }
 
 function splitArgs(value: string): string[] {
@@ -54,6 +55,7 @@ export function loadConfig(): Config {
     excludeTools: splitList(core.getInput('exclude_tools')),
     extraArgs: splitArgs(core.getInput('extra_args')),
     installArgs: splitArgs(core.getInput('install_args')),
+    timeoutSeconds: Number.parseInt(core.getInput('timeout') || '600', 10),
   };
 }
 

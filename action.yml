@@ -51,6 +51,9 @@ inputs:
   install_args:
     description: 'Extra npm flags when installing pi (e.g. "--registry=...").'
     default: ''
+  timeout:
+    description: 'Hard timeout in seconds for each pi run. 0 = no timeout (not recommended).'
+    default: '600'
 
 outputs:
   triggered:
