@@ -25,7 +25,9 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       - name: Pi reviews the PR
         uses: ./
         with:
@@ -53,6 +55,8 @@ jobs:
       issues: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Pi answers @pi
         uses: ./
         with:
