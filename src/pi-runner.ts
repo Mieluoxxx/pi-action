@@ -1,5 +1,5 @@
 import * as core from '@actions/core';
-import * as exec from '@actions/exec';
+import { spawn } from 'node:child_process';
 import { type Config, toolsFor } from './config';
 
 export interface PiResult {
@@ -17,6 +17,8 @@ export interface RunPiOptions {
   prompt: string;
   config: Config;
   cwd: string;
+  /** Hard kill pi after this many milliseconds. */
+  timeoutMs: number;
 }
 
 type Bag = Record<string, unknown>;
@@ -166,44 +168,78 @@ function buildPiEnv(): Record<string, string> {
   return env;
 }
 
-/** Spawn `pi` in print+json mode and summarize its event stream. */
+/** Spawn `pi` in print+json mode, kill it after timeoutMs, summarize its event stream. */
 export async function runPi(opts: RunPiOptions): Promise<PiResult> {
   const args = buildPiArgs(opts);
+  const env = buildPiEnv();
   core.info(`Running: pi ${args.map((a) => (a === opts.config.apiKey ? '***' : a)).join(' ')}`);
 
-  let stdout = '';
-  let stderr = '';
-  const exitCode = await exec.exec('pi', args, {
-    cwd: opts.cwd,
-    env: buildPiEnv(),
-    silent: true,
-    listeners: {
-      stdout: (data) => {
-        stdout += data.toString();
-      },
-      stderr: (data) => {
-        stderr += data.toString();
-      },
-    },
-    ignoreReturnCode: true,
+  return new Promise<PiResult>((resolve) => {
+    let stdout = '';
+    let stderr = '';
+    let timedOut = false;
+    let settled = false;
+
+    const finish = (code: number | null) => {
+      if (settled) return;
+      settled = true;
+      const events = parseEvents(stdout);
+      const result = summarizeEvents(events);
+      result.exitCode = code ?? -1;
+      if (timedOut) {
+        result.ok = false;
+        result.errorMessage = `pi timed out after ${Math.round(opts.timeoutMs / 1000)}s`;
+      } else if ((code ?? 0) !== 0 && !result.text) {
+        result.ok = false;
+        result.errorMessage =
+          result.errorMessage ?? (stderr.trim().slice(0, 2000) || `pi exited with code ${code}`);
+      }
+      if (stderr.trim()) core.info(`pi stderr (tail):\n${stderr.slice(-2000)}`);
+      core.info(
+        `pi done: exit=${code} tools=${result.toolCalls} written=${result.writtenFiles.length} text=${result.text.length} chars timedOut=${timedOut}`,
+      );
+      resolve(result);
+    };
+
+    const child = spawn('pi', args, {
+      cwd: opts.cwd,
+      env: env as NodeJS.ProcessEnv,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    const timer = setTimeout(() => {
+      timedOut = true;
+      core.warning(`pi exceeded ${opts.timeoutMs}ms, killing (SIGTERM then SIGKILL)`);
+      child.kill('SIGTERM');
+      setTimeout(() => {
+        try {
+          child.kill('SIGKILL');
+        } catch {
+          // process already exited
+        }
+      }, 5000);
+    }, opts.timeoutMs);
+
+    child.stdout?.on('data', (data: Buffer) => {
+      stdout += data.toString();
+    });
+    child.stderr?.on('data', (data: Buffer) => {
+      stderr += data.toString();
+    });
+    child.on('error', (err: NodeJS.ErrnoException) => {
+      clearTimeout(timer);
+      resolve({
+        ok: false,
+        text: '',
+        exitCode: -1,
+        writtenFiles: [],
+        toolCalls: 0,
+        errorMessage: `failed to spawn pi: ${err.message}`,
+      });
+    });
+    child.on('close', (code: number | null) => {
+      clearTimeout(timer);
+      finish(code);
+    });
   });
-
-  const events = parseEvents(stdout);
-  const result = summarizeEvents(events);
-  result.exitCode = exitCode;
-
-  if (exitCode !== 0 && !result.text) {
-    result.ok = false;
-    result.errorMessage =
-      result.errorMessage ?? (stderr.trim().slice(0, 2000) || `pi exited with code ${exitCode}`);
-  }
-
-  if (stderr.trim()) {
-    core.info(`pi stderr (tail):\n${stderr.slice(-2000)}`);
-  }
-
-  core.info(
-    `pi done: exit=${exitCode} tools=${result.toolCalls} written=${result.writtenFiles.length} text=${result.text.length} chars`,
-  );
-  return result;
 }

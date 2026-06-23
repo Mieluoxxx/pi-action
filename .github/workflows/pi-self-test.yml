@@ -48,7 +48,7 @@ jobs:
     if: github.event_name == 'issue_comment' && contains(github.event.comment.body, '@pi') && github.repository == 'Mieluoxxx/pi-action'
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       pull-requests: write
       issues: write
     steps:
@@ -61,6 +61,7 @@ jobs:
           model: ${{ vars.PI_MODEL }}
           api_key: ${{ secrets.PI_API_KEY }}
           trigger_phrase: '@pi'
+          write_mode: 'true'
           thinking: low
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

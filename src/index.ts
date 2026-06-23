@@ -126,7 +126,12 @@ async function main(): Promise<void> {
     triggeredBy: decision.triggeredBy,
   });
 
-  const result = await runPi({ prompt, config, cwd: process.cwd() });
+  const result = await runPi({
+    prompt,
+    config,
+    cwd: process.cwd(),
+    timeoutMs: config.timeoutSeconds * 1000,
+  });
 
   let pushed = false;
   if (config.writeMode && result.writtenFiles.length > 0 && branch.length > 0) {

@@ -29999,6 +29999,7 @@ function loadConfig() {
         excludeTools: splitList(core.getInput('exclude_tools')),
         extraArgs: splitArgs(core.getInput('extra_args')),
         installArgs: splitArgs(core.getInput('install_args')),
+        timeoutSeconds: Number.parseInt(core.getInput('timeout') || '600', 10),
     };
 }
 /** Tool allowlist enforced regardless of write_mode. */
@@ -30468,7 +30469,12 @@ async function main() {
         writeMode: config.writeMode,
         triggeredBy: decision.triggeredBy,
     });
-    const result = await (0, pi_runner_1.runPi)({ prompt, config, cwd: process.cwd() });
+    const result = await (0, pi_runner_1.runPi)({
+        prompt,
+        config,
+        cwd: process.cwd(),
+        timeoutMs: config.timeoutSeconds * 1000,
+    });
     let pushed = false;
     if (config.writeMode && result.writtenFiles.length > 0 && branch.length > 0) {
         const pushResult = await (0, github_1.commitAndPush)({
@@ -30689,7 +30695,7 @@ exports.summarizeEvents = summarizeEvents;
 exports.buildPiArgs = buildPiArgs;
 exports.runPi = runPi;
 const core = __importStar(__nccwpck_require__(7484));
-const exec = __importStar(__nccwpck_require__(5236));
+const node_child_process_1 = __nccwpck_require__(1421);
 const config_1 = __nccwpck_require__(2973);
 function isBag(v) {
     return typeof v === 'object' && v !== null;
@@ -30843,39 +30849,77 @@ function buildPiEnv() {
     env.DISABLE_AUTOUPDATER = '1';
     return env;
 }
-/** Spawn `pi` in print+json mode and summarize its event stream. */
+/** Spawn `pi` in print+json mode, kill it after timeoutMs, summarize its event stream. */
 async function runPi(opts) {
     const args = buildPiArgs(opts);
+    const env = buildPiEnv();
     core.info(`Running: pi ${args.map((a) => (a === opts.config.apiKey ? '***' : a)).join(' ')}`);
-    let stdout = '';
-    let stderr = '';
-    const exitCode = await exec.exec('pi', args, {
-        cwd: opts.cwd,
-        env: buildPiEnv(),
-        silent: true,
-        listeners: {
-            stdout: (data) => {
-                stdout += data.toString();
-            },
-            stderr: (data) => {
-                stderr += data.toString();
-            },
-        },
-        ignoreReturnCode: true,
+    return new Promise((resolve) => {
+        let stdout = '';
+        let stderr = '';
+        let timedOut = false;
+        let settled = false;
+        const finish = (code) => {
+            if (settled)
+                return;
+            settled = true;
+            const events = parseEvents(stdout);
+            const result = summarizeEvents(events);
+            result.exitCode = code ?? -1;
+            if (timedOut) {
+                result.ok = false;
+                result.errorMessage = `pi timed out after ${Math.round(opts.timeoutMs / 1000)}s`;
+            }
+            else if ((code ?? 0) !== 0 && !result.text) {
+                result.ok = false;
+                result.errorMessage =
+                    result.errorMessage ?? (stderr.trim().slice(0, 2000) || `pi exited with code ${code}`);
+            }
+            if (stderr.trim())
+                core.info(`pi stderr (tail):\n${stderr.slice(-2000)}`);
+            core.info(`pi done: exit=${code} tools=${result.toolCalls} written=${result.writtenFiles.length} text=${result.text.length} chars timedOut=${timedOut}`);
+            resolve(result);
+        };
+        const child = (0, node_child_process_1.spawn)('pi', args, {
+            cwd: opts.cwd,
+            env: env,
+            stdio: ['ignore', 'pipe', 'pipe'],
+        });
+        const timer = setTimeout(() => {
+            timedOut = true;
+            core.warning(`pi exceeded ${opts.timeoutMs}ms, killing (SIGTERM then SIGKILL)`);
+            child.kill('SIGTERM');
+            setTimeout(() => {
+                try {
+                    child.kill('SIGKILL');
+                }
+                catch {
+                    // process already exited
+                }
+            }, 5000);
+        }, opts.timeoutMs);
+        child.stdout?.on('data', (data) => {
+            stdout += data.toString();
+        });
+        child.stderr?.on('data', (data) => {
+            stderr += data.toString();
+        });
+        child.on('error', (err) => {
+            clearTimeout(timer);
+            resolve({
+                ok: false,
+                text: '',
+                exitCode: -1,
+                writtenFiles: [],
+                toolCalls: 0,
+                errorMessage: `failed to spawn pi: ${err.message}`,
+            });
+        });
+        child.on('close', (code) => {
+            clearTimeout(timer);
+            finish(code);
+        });
     });
-    const events = parseEvents(stdout);
-    const result = summarizeEvents(events);
-    result.exitCode = exitCode;
-    if (exitCode !== 0 && !result.text) {
-        result.ok = false;
-        result.errorMessage =
-            result.errorMessage ?? (stderr.trim().slice(0, 2000) || `pi exited with code ${exitCode}`);
-    }
-    if (stderr.trim()) {
-        core.info(`pi stderr (tail):\n${stderr.slice(-2000)}`);
-    }
-    core.info(`pi done: exit=${exitCode} tools=${result.toolCalls} written=${result.writtenFiles.length} text=${result.text.length} chars`);
-    return result;
 }
 
 
@@ -31069,6 +31113,14 @@ module.exports = require("https");
 
 "use strict";
 module.exports = require("net");
+
+/***/ }),
+
+/***/ 1421:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("node:child_process");
 
 /***/ }),
 
