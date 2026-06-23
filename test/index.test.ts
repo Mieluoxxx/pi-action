@@ -12,8 +12,6 @@ function makeConfig(overrides: Partial<Config> = {}): Config {
     apiKey: 'sk-test',
     baseUrl: '',
     api: 'anthropic-messages',
-    contextWindow: 200000,
-    maxTokens: 16384,
     triggerPhrase: '@pi',
     directPrompt: '',
     writeMode: false,

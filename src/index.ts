@@ -29,8 +29,6 @@ async function main(): Promise<void> {
         api: config.api,
         modelId: config.model,
         apiKeyEnv: 'PI_API_KEY',
-        contextWindow: config.contextWindow,
-        maxTokens: config.maxTokens,
       }),
     );
     core.info(`Wrote custom provider config to ${file}`);

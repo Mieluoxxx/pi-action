@@ -21,12 +21,6 @@ inputs:
   api:
     description: 'Protocol for custom endpoint: anthropic-messages (default), openai-completions, openai-responses, google-generative-ai.'
     default: 'anthropic-messages'
-  context_window:
-    description: 'Custom model context window in tokens.'
-    default: '200000'
-  max_tokens:
-    description: 'Custom model max output tokens.'
-    default: '16384'
   api_key:
     description: 'API key for the provider. Passed to pi via --api-key.'
     required: true

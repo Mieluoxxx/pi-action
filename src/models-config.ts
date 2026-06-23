@@ -8,15 +8,14 @@ export interface CustomModelConfig {
   modelId: string;
   /** Environment variable name whose value is the API key (referenced as $VAR in models.json). */
   apiKeyEnv: string;
-  contextWindow: number;
-  maxTokens: number;
   /** Provider key in models.json; defaults to "custom". */
   providerName?: string;
 }
 
 /**
  * Build the JSON for ~/.pi/agent/models.json registering a custom Anthropic-messages
- * compatible provider. Pure function (for tests).
+ * compatible provider. Only the model id is emitted — context window and max output
+ * tokens fall back to pi's defaults. Pure function (for tests).
  */
 export function buildModelsJson(c: CustomModelConfig): string {
   const providerName = c.providerName ?? 'custom';
@@ -26,16 +25,7 @@ export function buildModelsJson(c: CustomModelConfig): string {
         baseUrl: c.baseUrl,
         api: c.api,
         apiKey: `$${c.apiKeyEnv}`,
-        models: [
-          {
-            id: c.modelId,
-            name: c.modelId,
-            reasoning: false,
-            input: ['text'],
-            contextWindow: c.contextWindow,
-            maxTokens: c.maxTokens,
-          },
-        ],
+        models: [{ id: c.modelId }],
       },
     },
   };
