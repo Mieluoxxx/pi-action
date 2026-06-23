@@ -195,6 +195,10 @@ export async function runPi(opts: RunPiOptions): Promise<PiResult> {
       if (settled) return;
       settled = true;
       const events = parseEvents(stdout);
+      core.info(`[pi-events] count=${events.length}`);
+      for (const e of events) {
+        core.info(`[pi-event] ${JSON.stringify(e).slice(0, 600)}`);
+      }
       const result = summarizeEvents(events);
       result.exitCode = code ?? -1;
       if (timedOut) {
