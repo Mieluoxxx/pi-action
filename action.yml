@@ -1,5 +1,5 @@
 name: 'Pi Coding Agent'
-description: 'Run the Pi coding agent (earendil-works/pi) on GitHub issues and pull requests. Triggered by @pi comments or direct events.'
+description: 'Run the Pi coding agent (earendil-works/pi) on GitHub issues and pull requests. Triggered by @pi-agent comments or direct events.'
 author: 'pi-action'
 branding:
   icon: 'cpu'
@@ -26,7 +26,7 @@ inputs:
     required: true
   trigger_phrase:
     description: 'Phrase that triggers the agent in issue/PR comments.'
-    default: '@pi'
+    default: '@pi-agent'
   direct_prompt:
     description: 'Prompt used when the agent runs on a direct event (e.g. PR opened). Empty disables direct triggering.'
     default: ''
@@ -55,7 +55,7 @@ inputs:
     description: 'Hard timeout in seconds for each pi run. 0 = no timeout (not recommended).'
     default: '600'
   allowed_users:
-    description: 'Comma-separated usernames allowed to trigger @pi without write permission. Default: only OWNER/MEMBER/COLLABORATOR.'
+    description: 'Comma-separated usernames allowed to trigger @pi-agent without write permission. Default: only OWNER/MEMBER/COLLABORATOR.'
     default: ''
   bot_id:
     description: 'GitHub App ID for the bot commit author email (e.g. 4122418). Empty falls back to a generic author.'

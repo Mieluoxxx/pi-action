@@ -28,7 +28,7 @@ export function decideTrigger(event: EventKind, config: Config, actor: string): 
     const allowed = config.allowedUsers.includes(event.login);
     if (!hasWrite && !allowed) {
       core.info(
-        `@pi by @${event.login} (${event.authorAssociation || 'NONE'}) denied — needs write permission or allow-list`,
+        `${config.triggerPhrase} by @${event.login} (${event.authorAssociation || 'NONE'}) denied — needs write permission or allow-list`,
       );
       return SKIP;
     }

@@ -1,10 +1,10 @@
 # pi-action
 
-A GitHub Action that runs the [Pi coding agent](https://github.com/earendil-works/pi) on issues and pull requests. Trigger it with an `@pi` comment, or automatically on PR/issue open events — the same model as `claude-code-action`, powered by Pi.
+A GitHub Action that runs the [Pi coding agent](https://github.com/earendil-works/pi) on issues and pull requests. Trigger it with an `@pi-agent` comment, or automatically on PR/issue open events — the same model as `claude-code-action`, powered by Pi.
 
 ## Features
 
-- **`@pi` comment trigger** — invoke the agent in any issue or PR thread
+- **`@pi-agent` comment trigger** — invoke the agent in any issue or PR thread
 - **Direct trigger** — run automatically on `pull_request` / `issues` open events
 - **Read-only by default** — Pi gets `read`/`grep`/`find`/`ls` only; opt into `write_mode` for edits + pushes
 - **JSONL event parsing** — consumes Pi's `--mode json` stream for the final answer, tool calls, and written files
@@ -38,14 +38,14 @@ jobs:
       - uses: Mieluoxxx/pi-action@v1
         with:
           api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          trigger_phrase: '@pi'
+          trigger_phrase: '@pi-agent'
           direct_prompt: 'Review this change for correctness, security, and readability.'
           write_mode: 'false'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-Then comment `@pi explain the caching logic` on any PR.
+Then comment `@pi-agent explain the caching logic` on any PR.
 
 ## Inputs
 
@@ -55,7 +55,7 @@ Then comment `@pi explain the caching logic` on any PR.
 | `provider` | `anthropic` | LLM provider |
 | `model` | _provider default_ | e.g. `sonnet:high`, `openai/gpt-4o` |
 | `api_key` | _(required)_ | Provider API key, passed via `--api-key` |
-| `trigger_phrase` | `@pi` | Comment phrase that triggers the agent |
+| `trigger_phrase` | `@pi-agent` | Comment phrase that triggers the agent |
 | `direct_prompt` | `''` | Prompt for direct events (PR/issue open). Empty disables direct trigger |
 | `write_mode` | `false` | When true, grants `edit`/`write`/`bash` and pushes commits |
 | `thinking` | `medium` | `off` / `minimal` / `low` / `medium` / `high` / `xhigh` |

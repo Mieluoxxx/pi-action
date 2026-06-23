@@ -29988,7 +29988,7 @@ function loadConfig() {
         apiKey: core.getInput('api_key'),
         baseUrl,
         api: core.getInput('api') || 'anthropic-messages',
-        triggerPhrase: core.getInput('trigger_phrase') || '@pi',
+        triggerPhrase: core.getInput('trigger_phrase') || '@pi-agent',
         directPrompt: core.getInput('direct_prompt'),
         writeMode: core.getBooleanInput('write_mode'),
         thinking: core.getInput('thinking') || 'medium',
@@ -30066,7 +30066,7 @@ function decideTrigger(event, config, actor) {
         const hasWrite = WRITE_ASSOCIATIONS[event.authorAssociation] === true;
         const allowed = config.allowedUsers.includes(event.login);
         if (!hasWrite && !allowed) {
-            core.info(`@pi by @${event.login} (${event.authorAssociation || 'NONE'}) denied — needs write permission or allow-list`);
+            core.info(`${config.triggerPhrase} by @${event.login} (${event.authorAssociation || 'NONE'}) denied — needs write permission or allow-list`);
             return SKIP;
         }
         const t = (0, trigger_1.parseTrigger)(event.commentBody, config.triggerPhrase);
