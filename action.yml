@@ -57,6 +57,12 @@ inputs:
   allowed_users:
     description: 'Comma-separated usernames allowed to trigger @pi without write permission. Default: only OWNER/MEMBER/COLLABORATOR.'
     default: ''
+  bot_id:
+    description: 'GitHub App ID for the bot commit author email (e.g. 4122418). Empty falls back to a generic author.'
+    default: ''
+  bot_name:
+    description: 'Bot username used for commits (e.g. pi-action[bot]).'
+    default: 'pi-action[bot]'
 
 outputs:
   triggered:

@@ -23,6 +23,8 @@ function makeConfig(overrides: Partial<Config> = {}): Config {
     installArgs: [],
     timeoutSeconds: 600,
     allowedUsers: [],
+    botId: '',
+    botName: 'pi-action[bot]',
     ...overrides,
   };
 }

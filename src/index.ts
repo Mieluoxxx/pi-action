@@ -141,6 +141,8 @@ async function main(): Promise<void> {
       branch,
       message: `pi-action: ${decision.task.slice(0, 72) || 'changes'}`,
       cwd: process.cwd(),
+      botId: config.botId,
+      botName: config.botName,
     });
     pushed = pushResult.pushed;
   }

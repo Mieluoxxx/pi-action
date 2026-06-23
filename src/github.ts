@@ -46,6 +46,8 @@ export interface CommitOptions {
   branch: string;
   message: string;
   cwd: string;
+  botId: string;
+  botName: string;
 }
 
 export interface CommitResult {
@@ -87,11 +89,10 @@ export async function commitAndPush(opts: CommitOptions): Promise<CommitResult> 
     return { pushed: false, commitSha: '' };
   }
 
-  await exec.exec(
-    'git',
-    ['commit', '-m', opts.message, '--author', 'pi-action <actions@github.com>'],
-    { cwd: opts.cwd },
-  );
+  const author = opts.botId
+    ? `${opts.botName} <${opts.botId}+${opts.botName}@users.noreply.github.com>`
+    : `${opts.botName} <actions@github.com>`;
+  await exec.exec('git', ['commit', '-m', opts.message, '--author', author], { cwd: opts.cwd });
   await exec.exec('git', ['push', 'origin', `HEAD:${opts.branch}`], {
     cwd: opts.cwd,
     silent: true,
