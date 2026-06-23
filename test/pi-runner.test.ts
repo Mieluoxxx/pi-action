@@ -60,27 +60,12 @@ test('summarizeEvents falls back to streamed deltas', () => {
 
 test('summarizeEvents collects written files deduped', () => {
   const r = summarizeEvents([
-    {
-      type: 'tool_execution_end',
-      toolName: 'edit',
-      args: { file: 'src/a.ts' },
-      result: {},
-      isError: false,
-    },
-    {
-      type: 'tool_execution_end',
-      toolName: 'write',
-      args: { path: 'out.txt' },
-      result: {},
-      isError: false,
-    },
-    {
-      type: 'tool_execution_end',
-      toolName: 'edit',
-      args: { file: 'src/a.ts' },
-      result: {},
-      isError: false,
-    },
+    { type: 'tool_execution_start', toolName: 'edit', args: { file: 'src/a.ts' } },
+    { type: 'tool_execution_end', toolName: 'edit', result: {}, isError: false },
+    { type: 'tool_execution_start', toolName: 'write', args: { path: 'out.txt' } },
+    { type: 'tool_execution_end', toolName: 'write', result: {}, isError: false },
+    { type: 'tool_execution_start', toolName: 'edit', args: { file: 'src/a.ts' } },
+    { type: 'tool_execution_end', toolName: 'edit', result: {}, isError: false },
   ]);
   assert.deepEqual(r.writtenFiles, ['src/a.ts', 'out.txt']);
   assert.equal(r.toolCalls, 3);
