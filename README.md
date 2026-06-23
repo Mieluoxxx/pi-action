@@ -35,7 +35,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
-      - uses: your-org/pi-action@v1
+      - uses: Mieluoxxx/pi-action@v1
         with:
           api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           trigger_phrase: '@pi'
