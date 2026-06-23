@@ -155,10 +155,20 @@ export function buildPiArgs(opts: RunPiOptions): string[] {
   return args;
 }
 
+function isSensitiveEnvKey(key: string): boolean {
+  const upper = key.toUpperCase();
+  // Strip git push credentials and action inputs (which carry the api key) so
+  // pi's bash tool cannot authenticate a rogue `git push`. PI_API_KEY is set
+  // separately by index.ts and is intentionally kept — pi needs it for the API.
+  return upper === 'GITHUB_TOKEN' || upper === 'GH_TOKEN' || upper.startsWith('INPUT_');
+}
+
 function buildPiEnv(): Record<string, string> {
   const env: Record<string, string> = {};
   for (const [k, v] of Object.entries(process.env)) {
-    if (typeof v === 'string') env[k] = v;
+    if (typeof v !== 'string') continue;
+    if (isSensitiveEnvKey(k)) continue;
+    env[k] = v;
   }
   env.PI_OFFLINE = '1';
   env.PI_SKIP_VERSION_CHECK = '1';
