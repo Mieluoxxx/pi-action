@@ -53,7 +53,7 @@ jobs:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
 
   pi-ask:
-    if: github.event_name == 'issue_comment' && contains(github.event.comment.body, '@pi') && github.repository == 'Mieluoxxx/pi-action'
+    if: github.event_name == 'issue_comment' && contains(github.event.comment.body, '@pi-action') && github.repository == 'Mieluoxxx/pi-action'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -67,15 +67,16 @@ jobs:
           private-key: ${{ secrets.PI_APP_PRIVATE_KEY }}
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
-      - name: Pi answers @pi
+      - name: Pi answers @pi-action
         uses: ./
         with:
           base_url: ${{ secrets.PI_BASE_URL }}
           api: anthropic-messages
           model: ${{ vars.PI_MODEL }}
           api_key: ${{ secrets.PI_API_KEY }}
-          trigger_phrase: '@pi'
+          trigger_phrase: '@pi-action'
           write_mode: 'true'
           bot_id: ${{ secrets.PI_APP_ID }}
           thinking: low
