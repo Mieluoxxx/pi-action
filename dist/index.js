@@ -30830,7 +30830,7 @@ function summarizeEvents(events) {
             const toolName = typeof evt.toolName === 'string' ? evt.toolName : '';
             if (toolName === 'edit' || toolName === 'write') {
                 const fp = filePathFromArgs(evt.args);
-                core.info(`[pi-write] toolName=${toolName} file=${fp ?? '(unknown)'} args=${JSON.stringify(evt.args ?? {}).slice(0, 200)}`);
+                core.info(`[pi-write] ${toolName} ${fp ?? '(unknown)'}`);
                 if (fp && !written.includes(fp))
                     written.push(fp);
             }
@@ -30928,10 +30928,6 @@ async function runPi(opts) {
                 return;
             settled = true;
             const events = parseEvents(stdout);
-            core.info(`[pi-events] count=${events.length}`);
-            for (const e of events) {
-                core.info(`[pi-event] ${JSON.stringify(e).slice(0, 600)}`);
-            }
             const result = summarizeEvents(events);
             result.exitCode = code ?? -1;
             if (timedOut) {
