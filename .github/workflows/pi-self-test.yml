@@ -67,7 +67,7 @@ jobs:
           private-key: ${{ secrets.PI_APP_PRIVATE_KEY }}
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.event.issue.pull_request && format('refs/pull/{0}/head', github.event.issue.number) || '' }}
           persist-credentials: false
       - name: Pi answers @pi-action
         uses: ./
