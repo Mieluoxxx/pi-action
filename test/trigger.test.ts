@@ -30,3 +30,9 @@ test('parseTrigger uses first occurrence', () => {
   const r = parseTrigger('@pi a @pi b', '@pi');
   assert.equal(r.prompt, 'a @pi b');
 });
+
+test('parseTrigger returns not-triggered for empty phrase', () => {
+  const r = parseTrigger('anything', '');
+  assert.equal(r.triggered, false);
+  assert.equal(r.prompt, '');
+});
