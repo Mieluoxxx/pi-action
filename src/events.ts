@@ -18,6 +18,7 @@ export interface IssueCommentEvent {
   commentBody: string;
   commentId: number;
   login: string;
+  authorAssociation: string;
   isPr: boolean;
 }
 
@@ -88,6 +89,7 @@ export function classifyEvent(eventName: string, payload: unknown): EventKind {
       commentBody: str(comment.body),
       commentId: num(comment.id),
       login: str(field(comment, 'user')?.login),
+      authorAssociation: str(comment.author_association),
       isPr: Boolean('pull_request' in issue && issue.pull_request),
     };
   }

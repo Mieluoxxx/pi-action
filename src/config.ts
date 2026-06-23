@@ -17,6 +17,7 @@ export interface Config {
   extraArgs: string[];
   installArgs: string[];
   timeoutSeconds: number;
+  allowedUsers: string[];
 }
 
 function splitArgs(value: string): string[] {
@@ -56,5 +57,6 @@ export function loadConfig(): Config {
     extraArgs: splitArgs(core.getInput('extra_args')),
     installArgs: splitArgs(core.getInput('install_args')),
     timeoutSeconds: Number.parseInt(core.getInput('timeout') || '600', 10),
+    allowedUsers: splitList(core.getInput('allowed_users')),
   };
 }

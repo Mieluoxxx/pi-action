@@ -26,13 +26,14 @@ test('classifyEvent handles issue_comment on PR', () => {
   const e = classifyEvent('issue_comment', {
     action: 'created',
     issue: { number: 7, pull_request: {} },
-    comment: { id: 99, body: '@pi hi', user: { login: 'bob' } },
+    comment: { id: 99, body: '@pi hi', user: { login: 'bob' }, author_association: 'OWNER' },
   });
   if (e.kind !== 'issue_comment') throw new Error(`expected issue_comment, got ${e.kind}`);
   assert.equal(e.number, 7);
   assert.equal(e.commentBody, '@pi hi');
   assert.equal(e.login, 'bob');
   assert.equal(e.isPr, true);
+  assert.equal(e.authorAssociation, 'OWNER');
 });
 
 test('classifyEvent handles issues', () => {
@@ -77,6 +78,7 @@ test('shouldHandle only allows created comments', () => {
     commentId: 0,
     login: '',
     isPr: false,
+    authorAssociation: 'OWNER',
   };
   const edited = { ...created, action: 'edited' };
   assert.equal(shouldHandle(created), true);

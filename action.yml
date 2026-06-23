@@ -54,6 +54,9 @@ inputs:
   timeout:
     description: 'Hard timeout in seconds for each pi run. 0 = no timeout (not recommended).'
     default: '600'
+  allowed_users:
+    description: 'Comma-separated usernames allowed to trigger @pi without write permission. Default: only OWNER/MEMBER/COLLABORATOR.'
+    default: ''
 
 outputs:
   triggered:
