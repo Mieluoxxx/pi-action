@@ -5,6 +5,10 @@ export interface Config {
   provider: string;
   model: string;
   apiKey: string;
+  baseUrl: string;
+  api: string;
+  contextWindow: number;
+  maxTokens: number;
   triggerPhrase: string;
   directPrompt: string;
   writeMode: boolean;
@@ -31,11 +35,20 @@ function splitList(value: string): string[] {
 }
 
 export function loadConfig(): Config {
+  const baseUrl = core.getInput('base_url');
+  const model = core.getInput('model');
+  if (baseUrl && !model) {
+    throw new Error('`model` input is required when `base_url` is set.');
+  }
   return {
     piVersion: core.getInput('pi_version') || 'latest',
-    provider: core.getInput('provider') || 'anthropic',
-    model: core.getInput('model'),
+    provider: baseUrl ? 'custom' : core.getInput('provider') || 'anthropic',
+    model,
     apiKey: core.getInput('api_key'),
+    baseUrl,
+    api: core.getInput('api') || 'anthropic-messages',
+    contextWindow: Number.parseInt(core.getInput('context_window') || '200000', 10),
+    maxTokens: Number.parseInt(core.getInput('max_tokens') || '16384', 10),
     triggerPhrase: core.getInput('trigger_phrase') || '@pi',
     directPrompt: core.getInput('direct_prompt'),
     writeMode: core.getBooleanInput('write_mode'),
