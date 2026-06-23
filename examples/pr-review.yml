@@ -1,0 +1,24 @@
+# Example: automatic PR review on open (read-only, safe default)
+name: Pi Review
+on:
+  pull_request:
+    types: [opened]
+
+jobs:
+  pi-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Pi
+        uses: your-org/pi-action@v1
+        with:
+          api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          direct_prompt: |
+            Review this PR for correctness, security, and readability.
+            Lead with the verdict, then list specific issues with file:line.
+          thinking: high
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
