@@ -17,3 +17,10 @@ export function parseTrigger(commentBody: string, phrase: string): TriggerResult
   const after = commentBody.slice(idx + phrase.length).trim();
   return { triggered: true, prompt: after };
 }
+
+/**
+ * Boolean form of {@link parseTrigger} for callers that only need the yes/no.
+ */
+export function containsTrigger(commentBody: string, phrase: string): boolean {
+  return parseTrigger(commentBody, phrase).triggered;
+}
