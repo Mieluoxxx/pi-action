@@ -29990,8 +29990,6 @@ function loadConfig() {
         apiKey: core.getInput('api_key'),
         baseUrl,
         api: core.getInput('api') || 'anthropic-messages',
-        contextWindow: Number.parseInt(core.getInput('context_window') || '200000', 10),
-        maxTokens: Number.parseInt(core.getInput('max_tokens') || '16384', 10),
         triggerPhrase: core.getInput('trigger_phrase') || '@pi',
         directPrompt: core.getInput('direct_prompt'),
         writeMode: core.getBooleanInput('write_mode'),
@@ -30377,8 +30375,6 @@ async function main() {
             api: config.api,
             modelId: config.model,
             apiKeyEnv: 'PI_API_KEY',
-            contextWindow: config.contextWindow,
-            maxTokens: config.maxTokens,
         }));
         core.info(`Wrote custom provider config to ${file}`);
         core.setSecret(config.apiKey);
@@ -30620,7 +30616,8 @@ const os = __importStar(__nccwpck_require__(8161));
 const path = __importStar(__nccwpck_require__(6760));
 /**
  * Build the JSON for ~/.pi/agent/models.json registering a custom Anthropic-messages
- * compatible provider. Pure function (for tests).
+ * compatible provider. Only the model id is emitted — context window and max output
+ * tokens fall back to pi's defaults. Pure function (for tests).
  */
 function buildModelsJson(c) {
     const providerName = c.providerName ?? 'custom';
@@ -30630,16 +30627,7 @@ function buildModelsJson(c) {
                 baseUrl: c.baseUrl,
                 api: c.api,
                 apiKey: `$${c.apiKeyEnv}`,
-                models: [
-                    {
-                        id: c.modelId,
-                        name: c.modelId,
-                        reasoning: false,
-                        input: ['text'],
-                        contextWindow: c.contextWindow,
-                        maxTokens: c.maxTokens,
-                    },
-                ],
+                models: [{ id: c.modelId }],
             },
         },
     };
@@ -30963,7 +30951,6 @@ function buildPrompt(input) {
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.parseTrigger = parseTrigger;
-exports.containsTrigger = containsTrigger;
 /**
  * Detect whether a comment invokes the agent. Triggered when the phrase appears
  * anywhere in the body. The returned prompt is the text *after* the first
@@ -30976,12 +30963,6 @@ function parseTrigger(commentBody, phrase) {
     }
     const after = commentBody.slice(idx + phrase.length).trim();
     return { triggered: true, prompt: after };
-}
-/**
- * Boolean form of {@link parseTrigger} for callers that only need the yes/no.
- */
-function containsTrigger(commentBody, phrase) {
-    return parseTrigger(commentBody, phrase).triggered;
 }
 
 

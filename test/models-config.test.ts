@@ -8,8 +8,6 @@ test('buildModelsJson registers custom provider with env-referenced key', () => 
     api: 'anthropic-messages',
     modelId: 'my-claude',
     apiKeyEnv: 'PI_API_KEY',
-    contextWindow: 200000,
-    maxTokens: 8192,
   });
   const cfg = JSON.parse(json);
   const provider = cfg.providers.custom;
@@ -17,8 +15,6 @@ test('buildModelsJson registers custom provider with env-referenced key', () => 
   assert.equal(provider.api, 'anthropic-messages');
   assert.equal(provider.apiKey, '$PI_API_KEY');
   assert.equal(provider.models[0].id, 'my-claude');
-  assert.equal(provider.models[0].contextWindow, 200000);
-  assert.equal(provider.models[0].maxTokens, 8192);
 });
 
 test('buildModelsJson supports a custom provider name', () => {
@@ -27,8 +23,6 @@ test('buildModelsJson supports a custom provider name', () => {
     api: 'openai-completions',
     modelId: 'gpt-custom',
     apiKeyEnv: 'KEY',
-    contextWindow: 128000,
-    maxTokens: 4096,
     providerName: 'my-gw',
   });
   const cfg = JSON.parse(json);

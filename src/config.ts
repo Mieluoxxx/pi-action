@@ -7,8 +7,6 @@ export interface Config {
   apiKey: string;
   baseUrl: string;
   api: string;
-  contextWindow: number;
-  maxTokens: number;
   triggerPhrase: string;
   directPrompt: string;
   writeMode: boolean;
@@ -47,8 +45,6 @@ export function loadConfig(): Config {
     apiKey: core.getInput('api_key'),
     baseUrl,
     api: core.getInput('api') || 'anthropic-messages',
-    contextWindow: Number.parseInt(core.getInput('context_window') || '200000', 10),
-    maxTokens: Number.parseInt(core.getInput('max_tokens') || '16384', 10),
     triggerPhrase: core.getInput('trigger_phrase') || '@pi',
     directPrompt: core.getInput('direct_prompt'),
     writeMode: core.getBooleanInput('write_mode'),
