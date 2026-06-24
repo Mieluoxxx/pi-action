@@ -170,6 +170,37 @@ npm test            # node --test (40 unit tests)
 npm run build       # ncc bundle to dist/index.js
 ```
 
+## Contributing
+
+Contributions are welcome — bug fixes, new providers, docs, and tests are all fair game.
+
+### Workflow
+
+1. **Fork & clone** the repo, then `npm install` (requires Node `>= 20`).
+2. **Branch off `main`** — `feat/<topic>`, `fix/<issue>`, or `docs/<topic>`.
+3. **Make your change** under `src/` (TypeScript) and/or `test/`. Keep the diff focused; one logical change per PR.
+4. **Run the full quality gate locally** — all four must be green before you push:
+   ```bash
+   npm run typecheck   # tsc --noEmit
+   npm test            # node --test
+   npm run check       # biome lint + format
+   npm run build       # ncc bundle to dist/
+   ```
+5. **Commit** with an imperative subject (`Add X`, `Fix Y`). Reference issues as `Closes #123` when relevant.
+6. **Open a PR against `main`** — describe the change, rationale, and any manual verification you did.
+
+### Guidelines
+
+- **Cover behavioral changes with tests** in `test/*.test.ts` (`node --test` + `tsx`).
+- **Don't commit `dist/`** in PRs — it's rebuilt at release time via the `prepack` hook.
+- **Keep the default read-only** — any new tool exposure must stay gated behind `write_mode`.
+- **Update docs alongside behavior** — the `Inputs`/`Outputs` tables, `action.yml`, and this README must agree.
+- **Never log secrets** — redact API keys and tokens in issues, PRs, and sample logs.
+
+### Reporting bugs
+
+Open an issue with: Pi version (`pi_version`), provider + model, the workflow YAML with secrets redacted, and the action's log output. The more reproducible, the faster the fix.
+
 ## License
 
 MIT
