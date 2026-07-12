@@ -7,11 +7,15 @@ on:
 jobs:
   pi-review:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       - name: Run Pi
         uses: Mieluoxxx/pi-action@v1
         with:

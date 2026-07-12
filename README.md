@@ -11,6 +11,22 @@ A GitHub Action that runs the [Pi coding agent](https://github.com/earendil-work
 - **JSONL event parsing** — consumes Pi's `--mode json` stream for the final answer, tool calls, and written files
 - **Auto-commit** — in write mode, file edits are committed and pushed to the PR branch
 
+## Documentation
+
+English:
+
+- [Design and architecture](docs/en/design.md)
+- [Tools, permissions, and security](docs/en/tools-and-security.md)
+- [Workflow examples](docs/en/examples.md)
+- [Repository Skills configuration](docs/en/skills.md)
+
+中文：
+
+- [设计与架构](docs/zh/design.md)
+- [工具、权限与安全](docs/zh/tools-and-security.md)
+- [工作流示例](docs/zh/examples.md)
+- [仓库级 Skills 配置](docs/zh/skills.md)
+
 ## Prerequisites
 
 In the repo that will use pi-action:
@@ -30,21 +46,22 @@ name: Pi Agent
 on:
   issue_comment:
     types: [created]
-  pull_request:
-    types: [opened]
-  issues:
-    types: [opened]
 
 jobs:
   pi:
+    if: contains(github.event.comment.body, '@pi-agent')
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
-      contents: write       # lower to `read` if you never enable write_mode
+      contents: read
       pull-requests: write
       issues: write
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
+        with:
+          ref: ${{ github.event.issue.pull_request && format('refs/pull/{0}/head', github.event.issue.number) || github.event.repository.default_branch }}
+          fetch-depth: 0
+          persist-credentials: false
       - uses: Mieluoxxx/pi-action@v1
         with:
           api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -117,7 +134,7 @@ Default is **read-only**: Pi only gets `read`, `grep`, `find`, `ls`. To let it e
 | Pi edits + pushes | `contents: write` |
 | Trigger downstream workflows from pi's commits | GitHub App token (default `GITHUB_TOKEN` won't trigger `pull_request`/`push` events) |
 
-**⚠️ Public repos:** with `write_mode: true` and no `allowed_users`, anyone can comment `@pi-agent` and run shell on your runner. Keep `write_mode: false` for untrusted input, or set `allowed_users: 'alice,bob'`.
+**⚠️ Public repos:** comment triggers are limited to owners, members, collaborators, and users added through `allowed_users`. The list is additive, not exclusive. Direct triggers do not use this association check. Keep untrusted events read-only and add workflow-level `if:` restrictions where needed.
 
 ## Inputs
 
@@ -152,21 +169,22 @@ Default is **read-only**: Pi only gets `read`, `grep`, `find`, `ls`. To let it e
 
 ## Security
 
-Pi has **no built-in permission system** — it inherits whatever the runner process can do. This action enforces safety in layers:
+Pi runs as a normal process rather than a container sandbox. This action limits its capabilities in layers:
 
 1. **Tool allowlist** — read-only by default (`read,grep,find,ls`). `write_mode` gates `edit/write/bash`.
-2. **Permission gating** — only `OWNER`/`MEMBER`/`COLLABORATOR` associations (or users in `allowed_users`) can trigger; others are denied.
+2. **Comment permission gating** — only `OWNER`/`MEMBER`/`COLLABORATOR` associations (or users in `allowed_users`) can use comment triggers; direct triggers should be restricted at workflow level when necessary.
 3. **Self-trigger guard** — comments by `pi-action` and `*[bot]` accounts are ignored to prevent loops.
-4. **Token masking** — `GITHUB_TOKEN` is stripped from Pi's environment so a rogue `git push` can't authenticate. The action itself handles pushes via `git` at a layer Pi can't reach.
+4. **Token filtering** — `GITHUB_TOKEN`, `GH_TOKEN`, and `INPUT_*` variables are stripped from Pi's environment. Checkout credentials must also be disabled with `persist-credentials: false`.
 
-For untrusted PRs: keep `write_mode: false`, tighten the workflow's `permissions:`, and use `allowed_users`.
+For untrusted PRs: keep `write_mode: false`, tighten the workflow's `permissions:`, and disable persisted checkout credentials. See [Tools, permissions, and security](docs/en/tools-and-security.md) for the complete threat model.
 
 ## Development
 
 ```bash
 npm install
 npm run typecheck   # tsc --noEmit
-npm test            # node --test (40 unit tests)
+npm test            # node:test unit + integration tests
+npm run test:coverage
 npm run build       # ncc bundle to dist/index.js
 ```
 
@@ -179,10 +197,11 @@ Contributions are welcome — bug fixes, new providers, docs, and tests are all 
 1. **Fork & clone** the repo, then `npm install` (requires Node `>= 20`).
 2. **Branch off `main`** — `feat/<topic>`, `fix/<issue>`, or `docs/<topic>`.
 3. **Make your change** under `src/` (TypeScript) and/or `test/`. Keep the diff focused; one logical change per PR.
-4. **Run the full quality gate locally** — all four must be green before you push:
+4. **Run the full quality gate locally** — all checks must be green before you push:
    ```bash
    npm run typecheck   # tsc --noEmit
    npm test            # node --test
+   npm run test:coverage
    npm run check       # biome lint + format
    npm run build       # ncc bundle to dist/
    ```

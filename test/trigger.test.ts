@@ -30,3 +30,7 @@ test('parseTrigger uses first occurrence', () => {
   const r = parseTrigger('@pi a @pi b', '@pi');
   assert.equal(r.prompt, 'a @pi b');
 });
+
+test('parseTrigger never treats an empty phrase as a trigger', () => {
+  assert.deepEqual(parseTrigger('any comment', ''), { triggered: false, prompt: '' });
+});

@@ -53,6 +53,7 @@ export interface CommitOptions {
 export interface CommitResult {
   pushed: boolean;
   commitSha: string;
+  changedFiles: string[];
 }
 
 async function capture(cmd: string, args: string[], cwd: string): Promise<string> {
@@ -73,6 +74,18 @@ async function capture(cmd: string, args: string[], cwd: string): Promise<string
 /** Stage, commit, and push any working-tree changes. Returns pushed=false if nothing to commit. */
 export async function commitAndPush(opts: CommitOptions): Promise<CommitResult> {
   core.setSecret(opts.token);
+  await exec.exec('git', ['add', '-A'], { cwd: opts.cwd });
+
+  const staged = await capture('git', ['diff', '--cached', '--name-only'], opts.cwd);
+  if (!staged.trim()) {
+    core.info('No changes to commit.');
+    return { pushed: false, commitSha: '', changedFiles: [] };
+  }
+  const changedFiles = staged
+    .split('\n')
+    .map((file) => file.trim())
+    .filter(Boolean);
+
   await exec.exec(
     'git',
     ['config', 'remote.origin.url', buildRemoteUrl(opts.token, opts.repo.owner, opts.repo.repo)],
@@ -81,13 +94,6 @@ export async function commitAndPush(opts: CommitOptions): Promise<CommitResult> 
       silent: true,
     },
   );
-  await exec.exec('git', ['add', '-A'], { cwd: opts.cwd });
-
-  const staged = await capture('git', ['diff', '--cached', '--name-only'], opts.cwd);
-  if (!staged.trim()) {
-    core.info('No changes to commit.');
-    return { pushed: false, commitSha: '' };
-  }
 
   const committerEmail = opts.botId
     ? `${opts.botId}+${opts.botName}@users.noreply.github.com`
@@ -105,5 +111,5 @@ export async function commitAndPush(opts: CommitOptions): Promise<CommitResult> 
 
   const sha = await capture('git', ['rev-parse', 'HEAD'], opts.cwd);
   core.info(`Pushed commit ${sha.trim()}`);
-  return { pushed: true, commitSha: sha.trim() };
+  return { pushed: true, commitSha: sha.trim(), changedFiles };
 }

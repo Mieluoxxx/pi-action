@@ -121,6 +121,13 @@ test('decideTrigger ignores comment without phrase', () => {
   assert.equal(d.run, false);
 });
 
+test('decideTrigger ignores edited comments even when they contain the phrase', () => {
+  const created = comment('@pi retry', 'bob', false);
+  if (created.kind !== 'issue_comment') throw new Error('expected issue_comment');
+  const edited: EventKind = { ...created, action: 'edited' };
+  assert.equal(decideTrigger(edited, makeConfig(), 'bob').run, false);
+});
+
 test('decideTrigger denies @pi from non-write user (NONE) by default', () => {
   const d = decideTrigger(comment('@pi hi', 'stranger', false, 'NONE'), makeConfig(), 'stranger');
   assert.equal(d.run, false);

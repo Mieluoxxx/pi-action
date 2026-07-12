@@ -24,6 +24,7 @@ export function decideTrigger(event: EventKind, config: Config, actor: string): 
   if (self) return SKIP;
 
   if (event.kind === 'issue_comment') {
+    if (!shouldHandle(event)) return SKIP;
     const hasWrite = WRITE_ASSOCIATIONS[event.authorAssociation] === true;
     const allowed = config.allowedUsers.includes(event.login);
     if (!hasWrite && !allowed) {

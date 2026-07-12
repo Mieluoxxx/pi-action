@@ -29922,6 +29922,222 @@ function wrappy (fn, cb) {
 
 /***/ }),
 
+/***/ 2929:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.runAction = runAction;
+const core = __importStar(__nccwpck_require__(7484));
+const github = __importStar(__nccwpck_require__(3228));
+const config_1 = __nccwpck_require__(2973);
+const decisions_1 = __nccwpck_require__(9816);
+const events_1 = __nccwpck_require__(5694);
+const github_1 = __nccwpck_require__(9248);
+const install_1 = __nccwpck_require__(232);
+const models_config_1 = __nccwpck_require__(9056);
+const pi_runner_1 = __nccwpck_require__(1379);
+const prompt_1 = __nccwpck_require__(705);
+const RESPONSE_LIMIT = 60_000;
+function tokenOrThrow() {
+    const token = process.env.GITHUB_TOKEN;
+    if (!token)
+        throw new Error('GITHUB_TOKEN env var is required.');
+    return token;
+}
+const DEFAULT_DEPENDENCIES = {
+    core,
+    getContext: () => github.context,
+    getOctokit: (token) => github.getOctokit(token),
+    getToken: tokenOrThrow,
+    loadConfig: config_1.loadConfig,
+    ensurePiInstalled: install_1.ensurePiInstalled,
+    writeModelsJson: models_config_1.writeModelsJson,
+    runPi: pi_runner_1.runPi,
+    commitAndPush: github_1.commitAndPush,
+};
+/** Execute the action. Dependency overrides keep orchestration testable without network access. */
+async function runAction(overrides = {}) {
+    const deps = { ...DEFAULT_DEPENDENCIES, ...overrides };
+    const config = deps.loadConfig();
+    const ctx = deps.getContext();
+    const event = (0, events_1.classifyEvent)(ctx.eventName, ctx.payload);
+    (0, events_1.logEvent)(event);
+    const decision = (0, decisions_1.decideTrigger)(event, config, ctx.actor);
+    if (!decision.run) {
+        deps.core.info('Not triggered; exiting.');
+        deps.core.setOutput('triggered', 'false');
+        deps.core.setOutput('response', '');
+        return;
+    }
+    deps.core.setOutput('triggered', 'true');
+    if (!config.apiKey)
+        throw new Error('`api_key` input is required.');
+    deps.core.setSecret(config.apiKey);
+    await deps.ensurePiInstalled(config.piVersion, config.installArgs);
+    if (config.baseUrl) {
+        const file = deps.writeModelsJson((0, models_config_1.buildModelsJson)({
+            baseUrl: config.baseUrl,
+            api: config.api,
+            modelId: config.model,
+            apiKeyEnv: 'PI_API_KEY',
+        }));
+        deps.core.info(`Wrote custom provider config to ${file}`);
+        process.env.PI_API_KEY = config.apiKey;
+    }
+    const octokit = deps.getOctokit(deps.getToken());
+    const repo = { owner: ctx.repo.owner, repo: ctx.repo.repo };
+    let target;
+    let branch = '';
+    if (event.kind === 'pull_request') {
+        target = {
+            kind: 'pull_request',
+            number: event.number,
+            title: event.title,
+            body: event.body,
+            author: event.login,
+        };
+        branch = event.headRef;
+    }
+    else if (event.kind === 'issues') {
+        target = {
+            kind: 'issues',
+            number: event.number,
+            title: event.title,
+            body: event.body,
+            author: event.login,
+        };
+    }
+    else if (event.kind === 'issue_comment') {
+        if (event.isPr) {
+            const pr = await octokit.rest.pulls.get({
+                owner: repo.owner,
+                repo: repo.repo,
+                pull_number: event.number,
+            });
+            target = {
+                kind: 'pull_request',
+                number: event.number,
+                title: pr.data.title,
+                body: pr.data.body ?? '',
+                author: pr.data.user?.login ?? '',
+            };
+            branch = pr.data.head.ref;
+        }
+        else {
+            const issue = await octokit.rest.issues.get({
+                owner: repo.owner,
+                repo: repo.repo,
+                issue_number: event.number,
+            });
+            target = {
+                kind: 'issues',
+                number: event.number,
+                title: issue.data.title,
+                body: issue.data.body ?? '',
+                author: issue.data.user?.login ?? '',
+            };
+        }
+    }
+    else {
+        deps.core.info('Unsupported event after trigger decision.');
+        return;
+    }
+    let diff;
+    if (target.kind === 'pull_request') {
+        const res = await octokit.request('GET /repos/{owner}/{repo}/pulls/{pull_number}', {
+            owner: repo.owner,
+            repo: repo.repo,
+            pull_number: target.number,
+            headers: { accept: 'application/vnd.github.v3.diff' },
+        });
+        diff = typeof res.data === 'string' ? res.data : '';
+    }
+    const prompt = (0, prompt_1.buildPrompt)({
+        task: decision.task,
+        target,
+        diff,
+        repo,
+        writeMode: config.writeMode,
+        triggeredBy: decision.triggeredBy,
+    });
+    const result = await deps.runPi({
+        prompt,
+        config,
+        cwd: process.cwd(),
+        timeoutMs: config.timeoutSeconds * 1000,
+    });
+    let pushed = false;
+    let changedFiles = [...result.writtenFiles];
+    if (config.writeMode && branch.length > 0) {
+        const pushResult = await deps.commitAndPush({
+            token: deps.getToken(),
+            repo,
+            branch,
+            message: `pi-action: ${decision.task.slice(0, 72) || 'changes'}`,
+            cwd: process.cwd(),
+            botId: config.botId,
+            botName: config.botName,
+        });
+        pushed = pushResult.pushed;
+        changedFiles = [...new Set([...changedFiles, ...pushResult.changedFiles])];
+    }
+    const body = (0, github_1.buildCommentBody)({
+        text: result.text,
+        errorMessage: result.errorMessage,
+        writtenFiles: changedFiles,
+        pushed,
+        triggeredBy: decision.triggeredBy,
+    });
+    await octokit.rest.issues.createComment({
+        owner: repo.owner,
+        repo: repo.repo,
+        issue_number: target.number,
+        body,
+    });
+    deps.core.setOutput('response', result.text.slice(0, RESPONSE_LIMIT));
+    if (!result.ok) {
+        deps.core.setFailed(result.errorMessage ?? 'pi did not produce a result');
+    }
+}
+
+
+/***/ }),
+
 /***/ 2973:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -29961,8 +30177,12 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.WRITE_TOOLS = exports.READ_ONLY_TOOLS = void 0;
 exports.loadConfig = loadConfig;
+exports.toolsFor = toolsFor;
 const core = __importStar(__nccwpck_require__(7484));
+exports.READ_ONLY_TOOLS = ['read', 'grep', 'find', 'ls'];
+exports.WRITE_TOOLS = ['read', 'grep', 'find', 'ls', 'edit', 'write', 'bash'];
 function splitArgs(value) {
     return value
         .split(/\s+/)
@@ -29974,6 +30194,17 @@ function splitList(value) {
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean);
+}
+function parseTimeout(value) {
+    const raw = value || '600';
+    if (!/^\d+$/.test(raw)) {
+        throw new Error('`timeout` input must be a non-negative integer.');
+    }
+    const timeout = Number(raw);
+    if (!Number.isSafeInteger(timeout)) {
+        throw new Error('`timeout` input must be a non-negative integer.');
+    }
+    return timeout;
 }
 function loadConfig() {
     const baseUrl = core.getInput('base_url');
@@ -29997,11 +30228,16 @@ function loadConfig() {
         excludeTools: splitList(core.getInput('exclude_tools')),
         extraArgs: splitArgs(core.getInput('extra_args')),
         installArgs: splitArgs(core.getInput('install_args')),
-        timeoutSeconds: Number.parseInt(core.getInput('timeout') || '600', 10),
+        timeoutSeconds: parseTimeout(core.getInput('timeout')),
         allowedUsers: splitList(core.getInput('allowed_users')),
         botId: core.getInput('bot_id'),
         botName: core.getInput('bot_name') || 'pi-action[bot]',
     };
+}
+/** Return the tool allowlist enforced for the selected write policy. */
+function toolsFor(config) {
+    const base = config.writeMode ? [...exports.WRITE_TOOLS] : [...exports.READ_ONLY_TOOLS];
+    return base.filter((tool) => !config.excludeTools.includes(tool));
 }
 
 
@@ -30063,6 +30299,8 @@ function decideTrigger(event, config, actor) {
     if (self)
         return SKIP;
     if (event.kind === 'issue_comment') {
+        if (!(0, events_1.shouldHandle)(event))
+            return SKIP;
         const hasWrite = WRITE_ASSOCIATIONS[event.authorAssociation] === true;
         const allowed = config.allowedUsers.includes(event.login);
         if (!hasWrite && !allowed) {
@@ -30326,16 +30564,20 @@ async function capture(cmd, args, cwd) {
 /** Stage, commit, and push any working-tree changes. Returns pushed=false if nothing to commit. */
 async function commitAndPush(opts) {
     core.setSecret(opts.token);
-    await exec.exec('git', ['config', 'remote.origin.url', buildRemoteUrl(opts.token, opts.repo.owner, opts.repo.repo)], {
-        cwd: opts.cwd,
-        silent: true,
-    });
     await exec.exec('git', ['add', '-A'], { cwd: opts.cwd });
     const staged = await capture('git', ['diff', '--cached', '--name-only'], opts.cwd);
     if (!staged.trim()) {
         core.info('No changes to commit.');
-        return { pushed: false, commitSha: '' };
+        return { pushed: false, commitSha: '', changedFiles: [] };
     }
+    const changedFiles = staged
+        .split('\n')
+        .map((file) => file.trim())
+        .filter(Boolean);
+    await exec.exec('git', ['config', 'remote.origin.url', buildRemoteUrl(opts.token, opts.repo.owner, opts.repo.repo)], {
+        cwd: opts.cwd,
+        silent: true,
+    });
     const committerEmail = opts.botId
         ? `${opts.botId}+${opts.botName}@users.noreply.github.com`
         : 'actions@github.com';
@@ -30351,7 +30593,7 @@ async function commitAndPush(opts) {
     });
     const sha = await capture('git', ['rev-parse', 'HEAD'], opts.cwd);
     core.info(`Pushed commit ${sha.trim()}`);
-    return { pushed: true, commitSha: sha.trim() };
+    return { pushed: true, commitSha: sha.trim(), changedFiles };
 }
 
 
@@ -30397,164 +30639,8 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(7484));
-const github = __importStar(__nccwpck_require__(3228));
-const config_1 = __nccwpck_require__(2973);
-const decisions_1 = __nccwpck_require__(9816);
-const events_1 = __nccwpck_require__(5694);
-const github_1 = __nccwpck_require__(9248);
-const install_1 = __nccwpck_require__(232);
-const models_config_1 = __nccwpck_require__(9056);
-const pi_runner_1 = __nccwpck_require__(1379);
-const prompt_1 = __nccwpck_require__(705);
-const RESPONSE_LIMIT = 60_000;
-function tokenOrThrow() {
-    const token = process.env.GITHUB_TOKEN;
-    if (!token)
-        throw new Error('GITHUB_TOKEN env var is required.');
-    return token;
-}
-async function main() {
-    const config = (0, config_1.loadConfig)();
-    if (!config.apiKey)
-        throw new Error('`api_key` input is required.');
-    await (0, install_1.ensurePiInstalled)(config.piVersion, config.installArgs);
-    if (config.baseUrl) {
-        const file = (0, models_config_1.writeModelsJson)((0, models_config_1.buildModelsJson)({
-            baseUrl: config.baseUrl,
-            api: config.api,
-            modelId: config.model,
-            apiKeyEnv: 'PI_API_KEY',
-        }));
-        core.info(`Wrote custom provider config to ${file}`);
-        core.setSecret(config.apiKey);
-        process.env.PI_API_KEY = config.apiKey;
-    }
-    const ctx = github.context;
-    const event = (0, events_1.classifyEvent)(ctx.eventName, ctx.payload);
-    (0, events_1.logEvent)(event);
-    const decision = (0, decisions_1.decideTrigger)(event, config, ctx.actor);
-    if (!decision.run) {
-        core.info('Not triggered; exiting.');
-        core.setOutput('triggered', 'false');
-        core.setOutput('response', '');
-        return;
-    }
-    core.setOutput('triggered', 'true');
-    const octokit = github.getOctokit(tokenOrThrow());
-    const repo = { owner: ctx.repo.owner, repo: ctx.repo.repo };
-    // Resolve target metadata + branch + optional diff.
-    let target;
-    let branch = '';
-    if (event.kind === 'pull_request') {
-        target = {
-            kind: 'pull_request',
-            number: event.number,
-            title: event.title,
-            body: event.body,
-            author: event.login,
-        };
-        branch = event.headRef;
-    }
-    else if (event.kind === 'issues') {
-        target = {
-            kind: 'issues',
-            number: event.number,
-            title: event.title,
-            body: event.body,
-            author: event.login,
-        };
-    }
-    else if (event.kind === 'issue_comment') {
-        if (event.isPr) {
-            const pr = await octokit.rest.pulls.get({
-                owner: repo.owner,
-                repo: repo.repo,
-                pull_number: event.number,
-            });
-            target = {
-                kind: 'pull_request',
-                number: event.number,
-                title: pr.data.title,
-                body: pr.data.body ?? '',
-                author: pr.data.user?.login ?? '',
-            };
-            branch = pr.data.head.ref;
-        }
-        else {
-            const issue = await octokit.rest.issues.get({
-                owner: repo.owner,
-                repo: repo.repo,
-                issue_number: event.number,
-            });
-            target = {
-                kind: 'issues',
-                number: event.number,
-                title: issue.data.title,
-                body: issue.data.body ?? '',
-                author: issue.data.user?.login ?? '',
-            };
-        }
-    }
-    else {
-        core.info('Unsupported event after trigger decision.');
-        return;
-    }
-    let diff;
-    if (target.kind === 'pull_request') {
-        const res = await octokit.request('GET /repos/{owner}/{repo}/pulls/{pull_number}', {
-            owner: repo.owner,
-            repo: repo.repo,
-            pull_number: target.number,
-            headers: { accept: 'application/vnd.github.v3.diff' },
-        });
-        diff = typeof res.data === 'string' ? res.data : '';
-    }
-    const prompt = (0, prompt_1.buildPrompt)({
-        task: decision.task,
-        target,
-        diff,
-        repo,
-        writeMode: config.writeMode,
-        triggeredBy: decision.triggeredBy,
-    });
-    const result = await (0, pi_runner_1.runPi)({
-        prompt,
-        config,
-        cwd: process.cwd(),
-        timeoutMs: config.timeoutSeconds * 1000,
-    });
-    let pushed = false;
-    if (config.writeMode && result.writtenFiles.length > 0 && branch.length > 0) {
-        const pushResult = await (0, github_1.commitAndPush)({
-            token: tokenOrThrow(),
-            repo,
-            branch,
-            message: `pi-action: ${decision.task.slice(0, 72) || 'changes'}`,
-            cwd: process.cwd(),
-            botId: config.botId,
-            botName: config.botName,
-        });
-        pushed = pushResult.pushed;
-    }
-    const body = (0, github_1.buildCommentBody)({
-        text: result.text,
-        errorMessage: result.errorMessage,
-        writtenFiles: result.writtenFiles,
-        pushed,
-        triggeredBy: decision.triggeredBy,
-    });
-    await octokit.rest.issues.createComment({
-        owner: repo.owner,
-        repo: repo.repo,
-        issue_number: target.number,
-        body,
-    });
-    core.setOutput('response', result.text.slice(0, RESPONSE_LIMIT));
-    if (!result.ok) {
-        core.setFailed(result.errorMessage ?? 'pi did not produce a result');
-    }
-}
-main().catch((err) => {
+const action_1 = __nccwpck_require__(2929);
+(0, action_1.runAction)().catch((err) => {
     const message = err instanceof Error ? err.message : String(err);
     core.setFailed(message);
 });
@@ -30744,8 +30830,9 @@ exports.parseEvents = parseEvents;
 exports.summarizeEvents = summarizeEvents;
 exports.buildPiArgs = buildPiArgs;
 exports.runPi = runPi;
-const core = __importStar(__nccwpck_require__(7484));
 const node_child_process_1 = __nccwpck_require__(1421);
+const core = __importStar(__nccwpck_require__(7484));
+const config_1 = __nccwpck_require__(2973);
 function isBag(v) {
     return typeof v === 'object' && v !== null;
 }
@@ -30875,6 +30962,8 @@ function buildPiArgs(opts) {
         c.provider,
         '--thinking',
         c.thinking,
+        '--tools',
+        (0, config_1.toolsFor)(c).join(','),
     ];
     // custom provider reads key from models.json + env; built-in providers take --api-key
     if (c.provider !== 'custom' && c.apiKey) {
@@ -30886,8 +30975,6 @@ function buildPiArgs(opts) {
         args.push('--system-prompt', c.systemPrompt);
     if (c.appendSystemPrompt)
         args.push('--append-system-prompt', c.appendSystemPrompt);
-    if (c.excludeTools.length > 0)
-        args.push('--exclude-tools', c.excludeTools.join(','));
     args.push(...c.extraArgs);
     return args;
 }
@@ -30949,19 +31036,21 @@ async function runPi(opts) {
             env: env,
             stdio: ['ignore', 'pipe', 'pipe'],
         });
-        const timer = setTimeout(() => {
-            timedOut = true;
-            core.warning(`pi exceeded ${opts.timeoutMs}ms, killing (SIGTERM then SIGKILL)`);
-            child.kill('SIGTERM');
-            setTimeout(() => {
-                try {
-                    child.kill('SIGKILL');
-                }
-                catch {
-                    // process already exited
-                }
-            }, 5000);
-        }, opts.timeoutMs);
+        const timer = opts.timeoutMs > 0
+            ? setTimeout(() => {
+                timedOut = true;
+                core.warning(`pi exceeded ${opts.timeoutMs}ms, killing (SIGTERM then SIGKILL)`);
+                child.kill('SIGTERM');
+                setTimeout(() => {
+                    try {
+                        child.kill('SIGKILL');
+                    }
+                    catch {
+                        // process already exited
+                    }
+                }, 5000).unref();
+            }, opts.timeoutMs)
+            : undefined;
         child.stdout?.on('data', (data) => {
             stdout += data.toString();
         });
@@ -30969,7 +31058,11 @@ async function runPi(opts) {
             stderr += data.toString();
         });
         child.on('error', (err) => {
-            clearTimeout(timer);
+            if (settled)
+                return;
+            settled = true;
+            if (timer)
+                clearTimeout(timer);
             resolve({
                 ok: false,
                 text: '',
@@ -30980,7 +31073,8 @@ async function runPi(opts) {
             });
         });
         child.on('close', (code) => {
-            clearTimeout(timer);
+            if (timer)
+                clearTimeout(timer);
             finish(code);
         });
     });
@@ -31066,6 +31160,9 @@ exports.containsTrigger = containsTrigger;
  * occurrence of the phrase; if that is empty, the caller supplies a default.
  */
 function parseTrigger(commentBody, phrase) {
+    if (phrase.length === 0) {
+        return { triggered: false, prompt: '' };
+    }
     const idx = commentBody.indexOf(phrase);
     if (idx === -1) {
         return { triggered: false, prompt: '' };

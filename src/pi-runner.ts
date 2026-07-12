@@ -1,6 +1,7 @@
-import * as core from '@actions/core';
 import { spawn } from 'node:child_process';
-import { type Config } from './config';
+import * as core from '@actions/core';
+import type { Config } from './config';
+import { toolsFor } from './config';
 
 export interface PiResult {
   ok: boolean;
@@ -109,7 +110,9 @@ export function summarizeEvents(events: unknown[]): PiResult {
       const toolName = typeof evt.toolName === 'string' ? evt.toolName : '';
       if (evt.isError === true) {
         const r = evt.result;
-        core.info(`[pi-tool-error] toolName=${toolName || '(unknown)'} result=${JSON.stringify(r ?? '').slice(0, 500)}`);
+        core.info(
+          `[pi-tool-error] toolName=${toolName || '(unknown)'} result=${JSON.stringify(r ?? '').slice(0, 500)}`,
+        );
         errorMessage = isBag(r) && typeof r.message === 'string' ? r.message : 'tool error';
       }
     } else if (type === 'auto_retry_end') {
@@ -146,6 +149,8 @@ export function buildPiArgs(opts: RunPiOptions): string[] {
     c.provider,
     '--thinking',
     c.thinking,
+    '--tools',
+    toolsFor(c).join(','),
   ];
   // custom provider reads key from models.json + env; built-in providers take --api-key
   if (c.provider !== 'custom' && c.apiKey) {
@@ -154,7 +159,6 @@ export function buildPiArgs(opts: RunPiOptions): string[] {
   if (c.model) args.push('--model', c.model);
   if (c.systemPrompt) args.push('--system-prompt', c.systemPrompt);
   if (c.appendSystemPrompt) args.push('--append-system-prompt', c.appendSystemPrompt);
-  if (c.excludeTools.length > 0) args.push('--exclude-tools', c.excludeTools.join(','));
   args.push(...c.extraArgs);
   return args;
 }
@@ -220,18 +224,21 @@ export async function runPi(opts: RunPiOptions): Promise<PiResult> {
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 
-    const timer = setTimeout(() => {
-      timedOut = true;
-      core.warning(`pi exceeded ${opts.timeoutMs}ms, killing (SIGTERM then SIGKILL)`);
-      child.kill('SIGTERM');
-      setTimeout(() => {
-        try {
-          child.kill('SIGKILL');
-        } catch {
-          // process already exited
-        }
-      }, 5000);
-    }, opts.timeoutMs);
+    const timer =
+      opts.timeoutMs > 0
+        ? setTimeout(() => {
+            timedOut = true;
+            core.warning(`pi exceeded ${opts.timeoutMs}ms, killing (SIGTERM then SIGKILL)`);
+            child.kill('SIGTERM');
+            setTimeout(() => {
+              try {
+                child.kill('SIGKILL');
+              } catch {
+                // process already exited
+              }
+            }, 5000).unref();
+          }, opts.timeoutMs)
+        : undefined;
 
     child.stdout?.on('data', (data: Buffer) => {
       stdout += data.toString();
@@ -240,7 +247,9 @@ export async function runPi(opts: RunPiOptions): Promise<PiResult> {
       stderr += data.toString();
     });
     child.on('error', (err: NodeJS.ErrnoException) => {
-      clearTimeout(timer);
+      if (settled) return;
+      settled = true;
+      if (timer) clearTimeout(timer);
       resolve({
         ok: false,
         text: '',
@@ -251,7 +260,7 @@ export async function runPi(opts: RunPiOptions): Promise<PiResult> {
       });
     });
     child.on('close', (code: number | null) => {
-      clearTimeout(timer);
+      if (timer) clearTimeout(timer);
       finish(code);
     });
   });

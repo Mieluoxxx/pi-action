@@ -22,6 +22,9 @@ export interface Config {
   botName: string;
 }
 
+export const READ_ONLY_TOOLS = ['read', 'grep', 'find', 'ls'] as const;
+export const WRITE_TOOLS = ['read', 'grep', 'find', 'ls', 'edit', 'write', 'bash'] as const;
+
 function splitArgs(value: string): string[] {
   return value
     .split(/\s+/)
@@ -34,6 +37,18 @@ function splitList(value: string): string[] {
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
+}
+
+function parseTimeout(value: string): number {
+  const raw = value || '600';
+  if (!/^\d+$/.test(raw)) {
+    throw new Error('`timeout` input must be a non-negative integer.');
+  }
+  const timeout = Number(raw);
+  if (!Number.isSafeInteger(timeout)) {
+    throw new Error('`timeout` input must be a non-negative integer.');
+  }
+  return timeout;
 }
 
 export function loadConfig(): Config {
@@ -58,9 +73,15 @@ export function loadConfig(): Config {
     excludeTools: splitList(core.getInput('exclude_tools')),
     extraArgs: splitArgs(core.getInput('extra_args')),
     installArgs: splitArgs(core.getInput('install_args')),
-    timeoutSeconds: Number.parseInt(core.getInput('timeout') || '600', 10),
+    timeoutSeconds: parseTimeout(core.getInput('timeout')),
     allowedUsers: splitList(core.getInput('allowed_users')),
     botId: core.getInput('bot_id'),
     botName: core.getInput('bot_name') || 'pi-action[bot]',
   };
+}
+
+/** Return the tool allowlist enforced for the selected write policy. */
+export function toolsFor(config: Config): string[] {
+  const base = config.writeMode ? [...WRITE_TOOLS] : [...READ_ONLY_TOOLS];
+  return base.filter((tool) => !config.excludeTools.includes(tool));
 }

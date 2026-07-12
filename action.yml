@@ -16,13 +16,13 @@ inputs:
     description: 'Model id. Required when base_url is set; otherwise e.g. "sonnet:high".'
     default: ''
   base_url:
-    description: 'Custom Anthropic-messages-compatible endpoint. When set, pi-action writes ~/.pi/agent/models.json registering a "custom" provider here.'
+    description: 'Custom model endpoint. The protocol is selected with api; pi-action registers it as a "custom" provider in ~/.pi/agent/models.json.'
     default: ''
   api:
     description: 'Protocol for custom endpoint: anthropic-messages (default), openai-completions, openai-responses, google-generative-ai.'
     default: 'anthropic-messages'
   api_key:
-    description: 'API key for the provider. Passed to pi via --api-key.'
+    description: 'API key for the provider. Passed via --api-key for built-in providers or PI_API_KEY for a custom endpoint.'
     required: true
   trigger_phrase:
     description: 'Phrase that triggers the agent in issue/PR comments.'

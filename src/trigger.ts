@@ -10,6 +10,9 @@ export interface TriggerResult {
  * occurrence of the phrase; if that is empty, the caller supplies a default.
  */
 export function parseTrigger(commentBody: string, phrase: string): TriggerResult {
+  if (phrase.length === 0) {
+    return { triggered: false, prompt: '' };
+  }
   const idx = commentBody.indexOf(phrase);
   if (idx === -1) {
     return { triggered: false, prompt: '' };

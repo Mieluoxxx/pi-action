@@ -1,6 +1,9 @@
 import { strict as assert } from 'node:assert';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { test } from 'node:test';
-import { buildModelsJson } from '../src/models-config';
+import { buildModelsJson, writeModelsJson } from '../src/models-config';
 
 test('buildModelsJson registers custom provider with env-referenced key', () => {
   const json = buildModelsJson({
@@ -29,4 +32,19 @@ test('buildModelsJson supports a custom provider name', () => {
   assert.ok(cfg.providers['my-gw']);
   assert.equal(cfg.providers.custom, undefined);
   assert.equal(cfg.providers['my-gw'].apiKey, '$KEY');
+});
+
+test('writeModelsJson creates ~/.pi/agent/models.json', (t) => {
+  const home = mkdtempSync(join(tmpdir(), 'pi-action-home-'));
+  const originalHome = process.env.HOME;
+  process.env.HOME = home;
+  t.after(() => {
+    if (originalHome === undefined) Reflect.deleteProperty(process.env, 'HOME');
+    else process.env.HOME = originalHome;
+    rmSync(home, { recursive: true, force: true });
+  });
+
+  const file = writeModelsJson('{"providers":{}}');
+  assert.equal(file, join(home, '.pi', 'agent', 'models.json'));
+  assert.equal(readFileSync(file, 'utf8'), '{"providers":{}}');
 });

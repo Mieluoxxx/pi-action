@@ -68,3 +68,17 @@ test('buildPrompt uses fallback when task empty', () => {
   });
   assert.match(p, /\(no explicit instruction/);
 });
+
+test('buildPrompt truncates oversized bodies and diffs', () => {
+  const p = buildPrompt({
+    task: 'review',
+    target: { ...target, body: 'b'.repeat(20_100) },
+    diff: `+${'d'.repeat(60_100)}`,
+    repo: { owner: 'o', repo: 'r' },
+    writeMode: false,
+    triggeredBy: 'a',
+  });
+  assert.match(p, /truncated 100 chars/);
+  assert.match(p, /truncated 101 chars/);
+  assert.ok(p.length < 81_000);
+});

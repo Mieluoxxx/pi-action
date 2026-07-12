@@ -9,6 +9,7 @@
     "build": "ncc build src/index.ts -o dist --source-map --license licenses.txt",
     "typecheck": "tsc --noEmit",
     "test": "node --test --import tsx test/*.test.ts",
+    "test:coverage": "node --test --experimental-test-coverage \"--test-coverage-include=src/**/*.ts\" --test-coverage-exclude=src/index.ts --test-coverage-lines=95 --test-coverage-branches=80 --test-coverage-functions=90 --import tsx test/*.test.ts",
     "check": "biome check src test",
     "format": "biome format --write src test",
     "prepack": "npm run build"

@@ -1,26 +1,24 @@
-# Example: @pi-agent comment trigger with write access (agent can edit + push)
+# Example: @pi-agent comment trigger with write access on a PR
 name: Pi Agent
 on:
   issue_comment:
     types: [created]
-  issues:
-    types: [opened]
 
 jobs:
   pi:
-    # Only run on comments that mention @pi-agent, or on new issues.
-    if: >
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@pi-agent'))
-      || github.event_name == 'issues'
+    # Write-back currently targets same-repository PR branches.
+    if: github.event.issue.pull_request && contains(github.event.comment.body, '@pi-agent')
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: write
       pull-requests: write
-      issues: write
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: refs/pull/${{ github.event.issue.number }}/head
           fetch-depth: 0
+          persist-credentials: false
       - name: Run Pi
         uses: Mieluoxxx/pi-action@v1
         with:
